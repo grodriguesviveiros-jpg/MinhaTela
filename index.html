@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>MinhaTela | Compartilhamento P2P</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #111513;
+      --panel: #1a211e;
+      --line: #34423b;
+      --text: #ecf2ed;
+      --muted: #a4b3aa;
+      --green: #a7e3b4;
+      --green-ink: #142119;
+      --red: #ff9b8d;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      color: var(--text);
+      background-color: var(--bg);
+      background-image: radial-gradient(ellipse at 12% 0%, #26372d 0, transparent 34%),
+        linear-gradient(135deg, transparent 49.8%, #ffffff08 50%, transparent 50.2%);
+      font-family: "Segoe UI Variable", "Segoe UI", sans-serif;
+    }
+
+    main {
+      width: min(100% - 32px, 1080px);
+      margin: 0 auto;
+      padding: 30px 0 40px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding-bottom: 22px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .mark { width: 13px; height: 13px; background: var(--green); border-radius: 3px; transform: rotate(45deg); }
+    h1 { margin: 0; font-size: 20px; font-weight: 650; }
+    .eyebrow { color: var(--muted); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(250px, 320px) minmax(0, 1fr);
+      gap: 22px;
+      padding-top: 24px;
+    }
+
+    .controls { display: flex; flex-direction: column; gap: 18px; }
+    .control-block { padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+    h2 { margin: 0 0 12px; font-size: 15px; font-weight: 620; }
+    label { display: block; margin-bottom: 7px; color: var(--muted); font-size: 13px; }
+
+    input {
+      width: 100%;
+      height: 42px;
+      padding: 0 12px;
+      color: var(--text);
+      background: #101512;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      font: inherit;
+      letter-spacing: .04em;
+    }
+
+    button {
+      min-height: 42px;
+      padding: 0 14px;
+      color: var(--green-ink);
+      background: var(--green);
+      border: 1px solid var(--green);
+      border-radius: 5px;
+      font: inherit;
+      font-weight: 650;
+      cursor: pointer;
+    }
+
+    button.secondary { color: var(--text); background: transparent; border-color: var(--line); }
+    button:disabled { cursor: not-allowed; opacity: .55; }
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+
+    .status-row { display: flex; align-items: center; gap: 9px; color: var(--muted); font-size: 13px; }
+    .status-dot { width: 8px; height: 8px; flex: 0 0 auto; background: #718078; border-radius: 50%; }
+    .status-dot.live { background: var(--green); box-shadow: 0 0 10px #a7e36688; }
+    .status-dot.error { background: var(--red); }
+    #status { min-height: 36px; margin-top: 9px; line-height: 1.45; }
+    #roomLink { min-height: 18px; margin-top: 8px; overflow-wrap: anywhere; color: var(--muted); font-size: 12px; }
+
+    .screen {
+      min-width: 0;
+      min-height: 390px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      background: #080a09;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+    }
+
+    video { display: block; width: 100%; max-height: min(72vh, 760px); aspect-ratio: 16 / 9; object-fit: contain; background: #080a09; }
+    video[hidden] { display: none; }
+    .empty { padding: 24px; color: #87968d; text-align: center; font-size: 14px; }
+    .empty strong { display: block; margin-bottom: 8px; color: #c6d1ca; font-size: 16px; font-weight: 580; }
+    .footnote { margin: 15px 0 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+
+    @media (max-width: 720px) {
+      main { width: min(100% - 24px, 560px); padding-top: 20px; }
+      .workspace { grid-template-columns: 1fr; gap: 18px; }
+      .controls { gap: 14px; }
+      .control-block { padding-bottom: 14px; }
+      .screen { min-height: 220px; }
+      video { max-height: 55vh; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="brand"><span class="mark" aria-hidden="true"></span><h1>MinhaTela</h1></div>
+      <span class="eyebrow">WebRTC · P2P</span>
+    </header>
+
+    <section class="workspace" aria-label="Compartilhamento de tela">
+      <aside class="controls">
+        <section class="control-block">
+          <h2>Sessão</h2>
+          <label for="room">Código da sala</label>
+          <input id="room" maxlength="40" autocomplete="off" spellcheck="false">
+          <div class="actions">
+            <button id="shareButton" type="button">Compartilhar tela</button>
+            <button id="watchButton" class="secondary" type="button">Assistir</button>
+          </div>
+          <button id="stopButton" class="secondary" type="button" disabled style="width:100%; margin-top:8px">Encerrar sessão</button>
+          <div id="roomLink"></div>
+        </section>
+
+        <section class="control-block">
+          <h2>Conexão</h2>
+          <div class="status-row"><span id="statusDot" class="status-dot" aria-hidden="true"></span><span id="status">Pronto para iniciar.</span></div>
+          <p class="footnote">A tela e o áudio seguem diretamente entre os navegadores. O servidor apenas conecta os participantes.</p>
+        </section>
+      </aside>
+
+      <div class="screen">
+        <div id="emptyState" class="empty"><strong>A transmissão aparecerá aqui</strong>Crie uma sala ou informe o código enviado pelo transmissor.</div>
+        <video id="video" playsinline controls hidden></video>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    'use strict';
+
+    const roomInput = document.querySelector('#room');
+    const shareButton = document.querySelector('#shareButton');
+    const watchButton = document.querySelector('#watchButton');
+    const stopButton = document.querySelector('#stopButton');
+    const statusText = document.querySelector('#status');
+    const statusDot = document.querySelector('#statusDot');
+    const roomLink = document.querySelector('#roomLink');
+    const video = document.querySelector('#video');
+    const emptyState = document.querySelector('#emptyState');
+    const peers = new Map();
+    let socket;
+    let localStream;
+    let currentRole;
+
+    const rtcConfig = {
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+      bundlePolicy: 'max-bundle'
+    };
+
+    roomInput.value = crypto.randomUUID().replaceAll('-', '').slice(0, 10).toUpperCase();
+
+    function setStatus(message, state = '') {
+      statusText.textContent = message;
+      statusDot.className = `status-dot ${state}`;
+    }
+
+    function validRoom() {
+      const room = roomInput.value.trim();
+      if (!/^[a-zA-Z0-9_-]{4,40}$/.test(room)) {
+        setStatus('Use um código de 4 a 40 letras, números, hífen ou sublinhado.', 'error');
+        return null;
+      }
+      return room;
+    }
+
+    function sendSignal(message) {
+      if (socket?.readyState !== WebSocket.OPEN) return;
+      socket.send(JSON.stringify(message));
+    }
+
+    function connect(role, room) {
+      return new Promise((resolve, reject) => {
+        const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        socket = new WebSocket(`${protocol}//${location.host}/signal`);
+        currentRole = role;
+        let settled = false;
+
+        socket.addEventListener('open', () => {
+          socket.send(JSON.stringify({ type: 'join', role, room }));
+        });
+
+        socket.addEventListener('message', async (event) => {
+          let message;
+          try {
+            message = JSON.parse(event.data);
+          } catch {
+            setStatus('O servidor enviou uma mensagem inválida.', 'error');
+            return;
+          }
+
+          if (message.type === 'joined') {
+            settled = true;
+            const status = role === 'host'
+              ? (localStream?.getAudioTracks().some((track) => track.readyState === 'live')
+                ? 'Prévia local ativa; tela e áudio capturados.'
+                : 'Prévia local ativa, sem áudio. Firefox não captura áudio de tela; teste Chrome/Edge e habilite Compartilhar áudio.')
+              : 'Na sala; aguardando a oferta do transmissor.';
+            setStatus(status, 'live');
+            resolve();
+            return;
+          }
+
+          if (message.type === 'error') {
+            setStatus(message.message || 'Erro de sinalização.', 'error');
+            if (!settled) {
+              settled = true;
+              reject(new Error(message.message || 'Não foi possível entrar na sala.'));
+            }
+            return;
+          }
+
+          try {
+            await handleSignal(message);
+          } catch (error) {
+            console.error(error);
+            setStatus(`Falha na conexão WebRTC: ${error.message}`, 'error');
+          }
+        });
+
+        socket.addEventListener('close', () => {
+          if (!settled) {
+            settled = true;
+            reject(new Error('Conexão com o servidor de sinalização encerrada.'));
+          }
+          if (currentRole) setStatus('Desconectado do servidor.', 'error');
+        });
+
+        socket.addEventListener('error', () => {
+          if (!settled) {
+            settled = true;
+            reject(new Error('Não foi possível conectar ao servidor.'));
+          }
+        });
+      });
+    }
+
+    function createPeer(peerId) {
+      if (peers.has(peerId)) return peers.get(peerId);
+
+      const pc = new RTCPeerConnection(rtcConfig);
+      const state = { pc, pendingCandidates: [] };
+      peers.set(peerId, state);
+
+      if (currentRole === 'host' && localStream) {
+        for (const track of localStream.getTracks()) pc.addTrack(track, localStream);
+      }
+
+      pc.onicecandidate = ({ candidate }) => {
+        if (candidate) sendSignal({ type: 'candidate', target: peerId, candidate });
+      };
+
+      pc.onconnectionstatechange = () => {
+        if (pc.connectionState === 'connected') setStatus('Conexão P2P estabelecida.', 'live');
+        if (pc.connectionState === 'failed') setStatus('Conexão direta falhou. Pode ser necessário configurar TURN.', 'error');
+      };
+
+      pc.ontrack = ({ streams }) => {
+        if (currentRole !== 'viewer' || !streams[0]) return;
+        video.srcObject = streams[0];
+        video.muted = false;
+        video.hidden = false;
+        emptyState.hidden = true;
+        video.play().catch(() => setStatus('Vídeo conectado. Use os controles do player para iniciar a reprodução e o áudio.', 'live'));
+        setStatus('Recebendo transmissão P2P.', 'live');
+      };
+
+      return state;
+    }
+
+    async function flushCandidates(state) {
+      for (const candidate of state.pendingCandidates) {
+        await state.pc.addIceCandidate(candidate);
+      }
+      state.pendingCandidates.length = 0;
+    }
+
+    async function handleSignal(message) {
+      if (message.type === 'viewer-joined' && currentRole === 'host') {
+        const state = createPeer(message.peerId);
+        const offer = await state.pc.createOffer();
+        await state.pc.setLocalDescription(offer);
+        sendSignal({ type: 'offer', target: message.peerId, sdp: state.pc.localDescription });
+        return;
+      }
+
+      if (message.type === 'offer' && currentRole === 'viewer') {
+        const state = createPeer(message.from);
+        await state.pc.setRemoteDescription(message.sdp);
+        await flushCandidates(state);
+        const answer = await state.pc.createAnswer();
+        await state.pc.setLocalDescription(answer);
+        sendSignal({ type: 'answer', target: message.from, sdp: state.pc.localDescription });
+        return;
+      }
+
+      if (message.type === 'answer' && currentRole === 'host') {
+        const state = peers.get(message.from);
+        if (!state) return;
+        await state.pc.setRemoteDescription(message.sdp);
+        await flushCandidates(state);
+        return;
+      }
+
+      if (message.type === 'candidate') {
+        const state = peers.get(message.from);
+        if (!state) return;
+        if (state.pc.remoteDescription) await state.pc.addIceCandidate(message.candidate);
+        else state.pendingCandidates.push(message.candidate);
+        return;
+      }
+
+      if (message.type === 'peer-left') {
+        closePeer(message.peerId);
+        if (currentRole === 'viewer') setStatus('O transmissor encerrou a conexão.', '');
+      }
+    }
+
+    function closePeer(peerId) {
+      const state = peers.get(peerId);
+      if (!state) return;
+      state.pc.close();
+      peers.delete(peerId);
+    }
+
+    function stopSession() {
+      if (socket && socket.readyState < WebSocket.CLOSING) socket.close();
+      for (const peerId of peers.keys()) closePeer(peerId);
+      if (localStream) {
+        for (const track of localStream.getTracks()) track.stop();
+        localStream = null;
+      }
+      video.srcObject = null;
+      video.muted = false;
+      video.hidden = true;
+      emptyState.hidden = false;
+      roomLink.textContent = '';
+      currentRole = null;
+      shareButton.disabled = false;
+      watchButton.disabled = false;
+      stopButton.disabled = true;
+      setStatus('Sessão encerrada.');
+    }
+
+    shareButton.addEventListener('click', async () => {
+      const room = validRoom();
+      if (!room) return;
+      if (!navigator.mediaDevices?.getDisplayMedia) {
+        setStatus('Captura de tela não suportada neste navegador. Use Chrome ou Edge atualizado em localhost ou HTTPS.', 'error');
+        return;
+      }
+
+      shareButton.disabled = true;
+      watchButton.disabled = true;
+      setStatus('Selecione a tela ou janela para compartilhar.');
+
+      try {
+        localStream = await navigator.mediaDevices.getDisplayMedia({
+          video: { frameRate: { ideal: 60, max: 60 } },
+          audio: true
+        });
+        const videoTrack = localStream.getVideoTracks()[0];
+        if (!videoTrack) throw new Error('A captura não forneceu uma faixa de vídeo.');
+        videoTrack.addEventListener('ended', stopSession, { once: true });
+        video.srcObject = localStream;
+        video.muted = true;
+        video.hidden = false;
+        emptyState.hidden = true;
+        video.play().catch(() => setStatus('Captura ativa; a prévia local não pôde iniciar a reprodução.', 'error'));
+        await connect('host', room);
+        stopButton.disabled = false;
+        roomLink.textContent = `Código para os espectadores: ${room}`;
+      } catch (error) {
+        console.error(error);
+        if (localStream) {
+          for (const track of localStream.getTracks()) track.stop();
+          localStream = null;
+        }
+        if (socket && socket.readyState < WebSocket.CLOSING) socket.close();
+        shareButton.disabled = false;
+        watchButton.disabled = false;
+        const message = error.name === 'NotAllowedError'
+          ? 'Captura cancelada ou não permitida.'
+          : error.name === 'NotSupportedError'
+            ? 'Este ambiente não suporta captura de tela. Abra a página no Chrome ou Edge desktop atualizado em localhost ou HTTPS.'
+            : `Falha na captura ou conexão (${error.name}): ${error.message}`;
+        setStatus(message, 'error');
+      }
+    });
+
+    watchButton.addEventListener('click', async () => {
+      const room = validRoom();
+      if (!room) return;
+      shareButton.disabled = true;
+      watchButton.disabled = true;
+      setStatus('Conectando à sala...');
+      try {
+        await connect('viewer', room);
+        stopButton.disabled = false;
+        roomLink.textContent = `Assistindo à sala: ${room}`;
+      } catch (error) {
+        shareButton.disabled = false;
+        watchButton.disabled = false;
+        setStatus(error.message, 'error');
+      }
+    });
+
+    stopButton.addEventListener('click', stopSession);
+  </script>
+</body>
+</html>
