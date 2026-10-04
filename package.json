@@ -5,7 +5,8 @@
   "description": "Compartilhamento de tela P2P com WebRTC e sinalização WebSocket",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test"
   },
   "engines": {
     "node": ">=20"

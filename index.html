@@ -84,8 +84,11 @@
       font: inherit;
       font-weight: 650;
       cursor: pointer;
+      transition: background-color 120ms ease, border-color 120ms ease, opacity 120ms ease;
     }
 
+    button:hover:not(:disabled) { filter: brightness(1.08); }
+    button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
     button.secondary { color: var(--text); background: transparent; border-color: var(--line); }
     button:disabled { cursor: not-allowed; opacity: .55; }
     .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
@@ -98,6 +101,7 @@
     #roomLink { min-height: 18px; margin-top: 8px; overflow-wrap: anywhere; color: var(--muted); font-size: 12px; }
 
     .screen {
+      position: relative;
       min-width: 0;
       min-height: 390px;
       display: grid;
@@ -114,14 +118,82 @@
     .empty strong { display: block; margin-bottom: 8px; color: #c6d1ca; font-size: 16px; font-weight: 580; }
     .footnote { margin: 15px 0 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
 
+    .controls { min-width: 0; }
+    .control-block { min-width: 0; }
+    .field-row { display: flex; gap: 8px; align-items: end; }
+    .field-row > div { flex: 1; min-width: 0; }
+    .field-row button { flex: 0 0 auto; }
+    .name-input { letter-spacing: 0; }
+    .status-row { align-items: flex-start; }
+    #status { margin: 0; }
+    .small-status { color: var(--muted); font-size: 12px; }
+    .voice-actions { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; }
+    .voice-actions select { min-width: 0; height: 42px; padding: 0 8px; color: var(--text); background: #101512; border: 1px solid var(--line); border-radius: 5px; font: inherit; }
+    .mic-off { color: #fff !important; background: #8c453d !important; border-color: #8c453d !important; }
+    .section-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .section-title h2 { margin-bottom: 0; }
+    .count { color: var(--muted); font-size: 12px; }
+    .participant-list { display: grid; gap: 7px; margin: 12px 0 0; padding: 0; list-style: none; }
+    .participant { display: grid; grid-template-columns: 9px minmax(0, 1fr) auto; align-items: center; gap: 8px; min-width: 0; }
+    .participant-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+    .participant-meta { color: var(--muted); font-size: 11px; white-space: nowrap; }
+    .listen-button { grid-column: 3; min-height: 26px; padding: 0 6px; font-size: 10px; }
+    .participant-dot { width: 8px; height: 8px; background: #718078; border-radius: 50%; }
+    .participant-dot.speaking { background: var(--green); box-shadow: 0 0 10px #a7e36688; }
+    .participant-dot.offline { background: var(--red); }
+    .participant audio { display: none; }
+    .volume-control { grid-column: 2 / 4; width: 100%; height: 14px; accent-color: var(--green); }
+    .chat-block { display: flex; flex-direction: column; min-height: 170px; }
+    .chat-block.collapsed { min-height: 0; }
+    .chat-log { display: flex; flex-direction: column; gap: 8px; max-height: 240px; min-height: 100px; overflow-y: auto; margin: 12px 0; padding: 0 4px 0 0; }
+    .chat-message { padding: 8px; border: 1px solid #29352f; border-radius: 4px; background: #121815; overflow-wrap: anywhere; }
+    .chat-message header { display: flex; gap: 8px; align-items: baseline; padding: 0; border: 0; }
+    .chat-message strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+    .chat-message time { color: var(--muted); font-size: 10px; white-space: nowrap; }
+    .chat-message p { margin: 5px 0 0; font-size: 13px; line-height: 1.4; white-space: pre-wrap; }
+    .chat-message button { min-height: 24px; margin-left: auto; padding: 0 7px; font-size: 11px; }
+    .chat-form { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px; align-items: center; }
+    .chat-form input { height: 38px; letter-spacing: 0; }
+    .chat-form button { min-height: 38px; padding: 0 10px; }
+    .chat-block.collapsed .chat-log, .chat-block.collapsed .chat-form { display: none; }
+    .stage { min-width: 0; }
+    .stage-toolbar { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; margin-bottom: 9px; }
+    .stage-toolbar button { min-height: 34px; padding: 0 10px; font-size: 12px; }
+    .stage-toolbar button[aria-pressed="true"] { color: var(--green-ink); background: var(--green); border-color: var(--green); }
+    .stage-shell { position: relative; display: grid; place-items: center; min-width: 0; min-height: 390px; overflow: hidden; background: #080a09; border: 1px solid var(--line); border-radius: 6px; }
+    .stage-shell video { max-height: min(72vh, 760px); }
+    .stage-shell.is-theater { position: fixed; z-index: 20; inset: 12px; min-height: 0; border-color: #5f796a; box-shadow: 0 18px 80px #000b; }
+    .stage-shell.is-theater video { max-height: calc(100vh - 26px); }
+    .stage-shell:fullscreen { width: 100vw; height: 100vh; border: 0; border-radius: 0; }
+    .stage-shell:fullscreen video { max-height: 100vh; }
+    #annotationCanvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    #annotationCanvas.active { pointer-events: auto; cursor: crosshair; }
+    .remote-pointer { position: absolute; z-index: 2; display: none; width: 18px; height: 18px; border: 2px solid #fff; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 2px #0008; transform: translate(-50%, -50%); pointer-events: none; }
+    .remote-pointer.active { display: block; }
+    .workspace.controls-hidden { grid-template-columns: minmax(0, 1fr); }
+    .workspace.controls-hidden .controls { display: none; }
+    .workspace.theater-mode { grid-template-columns: minmax(0, 1fr); }
+    .workspace.theater-mode .controls { display: none; }
+    .workspace.theater-mode .stage-toolbar { position: relative; z-index: 21; }
+    .screen-info { margin-right: auto; align-self: center; color: var(--muted); font-size: 11px; }
+    .toast { position: fixed; z-index: 50; left: 50%; bottom: 18px; max-width: calc(100% - 32px); padding: 9px 14px; color: var(--text); background: #27332c; border: 1px solid var(--line); border-radius: 5px; transform: translateX(-50%); }
+    .toast[hidden] { display: none; }
+
     @media (max-width: 720px) {
-      main { width: min(100% - 24px, 560px); padding-top: 20px; }
-      .workspace { grid-template-columns: 1fr; gap: 18px; }
-      .controls { gap: 14px; }
-      .control-block { padding-bottom: 14px; }
-      .screen { min-height: 220px; }
-      video { max-height: 55vh; }
+      main { width: min(100% - 24px, 720px); padding-top: 18px; }
+      .workspace { grid-template-columns: 1fr; gap: 14px; }
+      .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .control-block { padding-bottom: 12px; }
+      .screen, .stage-shell { min-height: 220px; }
+      video, .stage-shell video { max-height: 55vh; }
+      .chat-block { grid-column: 1 / -1; }
+      .chat-log { max-height: 170px; }
+      .stage-shell.is-theater { inset: 5px; }
+      .stage-toolbar { justify-content: flex-start; }
+      .screen-info { flex-basis: 100%; order: 1; }
     }
+
+    @media (max-width: 420px) { .controls { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -131,12 +203,17 @@
       <span class="eyebrow">WebRTC · P2P</span>
     </header>
 
-    <section class="workspace" aria-label="Compartilhamento de tela">
+    <section id="workspace" class="workspace" aria-label="Compartilhamento de tela">
       <aside class="controls">
         <section class="control-block">
           <h2>Sessão</h2>
           <label for="room">Código da sala</label>
-          <input id="room" maxlength="40" autocomplete="off" spellcheck="false">
+          <div class="field-row">
+            <div><input id="room" maxlength="40" autocomplete="off" spellcheck="false" aria-label="Código da sala"></div>
+            <button id="copyRoomButton" class="secondary" type="button" title="Copiar código da sala" aria-label="Copiar código da sala">Copiar</button>
+          </div>
+          <label for="displayName" style="margin-top:10px">Seu nome</label>
+          <input id="displayName" class="name-input" maxlength="32" autocomplete="nickname" value="Participante">
           <div class="actions">
             <button id="shareButton" type="button">Compartilhar tela</button>
             <button id="watchButton" class="secondary" type="button">Assistir</button>
@@ -148,33 +225,108 @@
         <section class="control-block">
           <h2>Conexão</h2>
           <div class="status-row"><span id="statusDot" class="status-dot" aria-hidden="true"></span><span id="status">Pronto para iniciar.</span></div>
-          <p class="footnote">A tela e o áudio seguem diretamente entre os navegadores. O servidor apenas conecta os participantes.</p>
+          <p id="connectionInfo" class="footnote">Mídia segue diretamente entre navegadores; servidor usado para sinalização e chat.</p>
+          <div class="small-status" id="connectionMetrics">Aguardando conexão.</div>
+        </section>
+
+        <section class="control-block">
+          <h2>Voz</h2>
+          <div class="voice-actions">
+            <button id="micButton" class="secondary mic-off" type="button" disabled aria-pressed="false">Microfone desligado</button>
+            <select id="audioInput" aria-label="Dispositivo de entrada de áudio" disabled><option value="">Entrada padrão</option></select>
+          </div>
+          <p id="micStatus" class="footnote">Ative para solicitar permissão e entrar na conversa por voz.</p>
+        </section>
+
+        <section class="control-block">
+          <div class="section-title"><h2>Participantes</h2><span id="participantCount" class="count">0</span></div>
+          <ul id="participantList" class="participant-list" aria-live="polite"></ul>
+        </section>
+
+        <section id="chatBlock" class="control-block chat-block">
+          <div class="section-title"><h2>Chat</h2><button id="chatToggle" class="secondary" type="button" aria-expanded="true" aria-label="Minimizar chat">Minimizar</button></div>
+          <div id="chatLog" class="chat-log" role="log" aria-live="polite" aria-relevant="additions"></div>
+          <form id="chatForm" class="chat-form">
+            <button id="emojiButton" class="secondary" type="button" title="Inserir emoji" aria-label="Inserir emoji">😀</button>
+            <input id="chatInput" maxlength="1000" autocomplete="off" placeholder="Mensagem..." aria-label="Mensagem">
+            <button type="submit" aria-label="Enviar mensagem">Enviar</button>
+          </form>
         </section>
       </aside>
 
-      <div class="screen">
+      <div class="stage">
+        <div class="stage-toolbar" aria-label="Ferramentas da transmissão">
+          <span id="screenInfo" class="screen-info">Sem transmissão ativa</span>
+          <button id="pointerButton" class="secondary" type="button" aria-pressed="false" title="Ativar ponteiro remoto">Ponteiro</button>
+          <button id="drawButton" class="secondary" type="button" aria-pressed="false" title="Desenhar sobre a transmissão">Desenhar</button>
+          <button id="clearButton" class="secondary" type="button" title="Limpar marcações">Limpar</button>
+          <button id="controlsButton" class="secondary" type="button" aria-pressed="false" title="Minimizar controles">Controles</button>
+          <button id="theaterButton" class="secondary" type="button" aria-pressed="false" title="Modo teatro">Teatro</button>
+          <button id="fullscreenButton" class="secondary" type="button" title="Tela cheia">Tela cheia</button>
+        </div>
+      <div id="stageShell" class="stage-shell">
         <div id="emptyState" class="empty"><strong>A transmissão aparecerá aqui</strong>Crie uma sala ou informe o código enviado pelo transmissor.</div>
         <video id="video" playsinline controls hidden></video>
+        <canvas id="annotationCanvas" aria-label="Camada de ponteiro e marcação"></canvas>
+        <span id="remotePointer" class="remote-pointer" aria-hidden="true"></span>
+      </div>
       </div>
     </section>
+    <div id="toast" class="toast" role="status" hidden></div>
   </main>
 
   <script>
     'use strict';
 
-    const roomInput = document.querySelector('#room');
-    const shareButton = document.querySelector('#shareButton');
-    const watchButton = document.querySelector('#watchButton');
-    const stopButton = document.querySelector('#stopButton');
-    const statusText = document.querySelector('#status');
-    const statusDot = document.querySelector('#statusDot');
-    const roomLink = document.querySelector('#roomLink');
-    const video = document.querySelector('#video');
-    const emptyState = document.querySelector('#emptyState');
+    const $ = (selector) => document.querySelector(selector);
+    const roomInput = $('#room');
+    const displayNameInput = $('#displayName');
+    const shareButton = $('#shareButton');
+    const watchButton = $('#watchButton');
+    const stopButton = $('#stopButton');
+    const micButton = $('#micButton');
+    const audioInput = $('#audioInput');
+    const statusText = $('#status');
+    const statusDot = $('#statusDot');
+    const roomLink = $('#roomLink');
+    const video = $('#video');
+    const emptyState = $('#emptyState');
+    const workspace = $('#workspace');
+    const stageShell = $('#stageShell');
+    const annotationCanvas = $('#annotationCanvas');
+    const annotationContext = annotationCanvas.getContext('2d');
+    const remotePointer = $('#remotePointer');
+    const participantList = $('#participantList');
+    const participantCount = $('#participantCount');
+    const chatBlock = $('#chatBlock');
+    const chatLog = $('#chatLog');
+    const chatInput = $('#chatInput');
     const peers = new Map();
+    const participants = new Map();
     let socket;
     let localStream;
+    let microphoneStream;
     let currentRole;
+    let roomCode;
+    let localPeerId;
+    let localMuted = true;
+    let shouldReconnect = false;
+    let intentionalClose = false;
+    let reconnectAttempt = 0;
+    let reconnectTimer;
+    let socketGeneration = 0;
+    let metricsTimer;
+    let speakingTimer;
+    let audioContext;
+    const localAudioMonitor = {};
+    let drawing = false;
+    let drawPoints = [];
+    let pointerEnabled = false;
+    let drawEnabled = false;
+    let controlsHidden = false;
+    let theaterEnabled = false;
+    let lastPointerSent = 0;
+    let toastTimer;
 
     const rtcConfig = {
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
@@ -182,10 +334,20 @@
     };
 
     roomInput.value = crypto.randomUUID().replaceAll('-', '').slice(0, 10).toUpperCase();
+    const storedName = localStorage.getItem('minhatela-name');
+    if (storedName) displayNameInput.value = storedName;
 
     function setStatus(message, state = '') {
       statusText.textContent = message;
       statusDot.className = `status-dot ${state}`;
+    }
+
+    function showToast(message) {
+      const toast = $('#toast');
+      toast.textContent = message;
+      toast.hidden = false;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { toast.hidden = true; }, 2300);
     }
 
     function validRoom() {
@@ -198,127 +360,282 @@
     }
 
     function sendSignal(message) {
-      if (socket?.readyState !== WebSocket.OPEN) return;
+      if (socket?.readyState !== WebSocket.OPEN) return false;
       socket.send(JSON.stringify(message));
+      return true;
     }
 
-    function connect(role, room) {
-      return new Promise((resolve, reject) => {
-        const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-        socket = new WebSocket(`${protocol}//${location.host}/signal`);
-        currentRole = role;
-        let settled = false;
+    function setMediaStatus(text) {
+      $('#screenInfo').textContent = text;
+    }
 
-        socket.addEventListener('open', () => {
-          socket.send(JSON.stringify({ type: 'join', role, room }));
-        });
-
-        socket.addEventListener('message', async (event) => {
-          let message;
-          try {
-            message = JSON.parse(event.data);
-          } catch {
-            setStatus('O servidor enviou uma mensagem inválida.', 'error');
-            return;
-          }
-
-          if (message.type === 'joined') {
-            settled = true;
-            const status = role === 'host'
-              ? (localStream?.getAudioTracks().some((track) => track.readyState === 'live')
-                ? 'Prévia local ativa; tela e áudio capturados.'
-                : 'Prévia local ativa, sem áudio. Firefox não captura áudio de tela; teste Chrome/Edge e habilite Compartilhar áudio.')
-              : 'Na sala; aguardando a oferta do transmissor.';
-            setStatus(status, 'live');
-            resolve();
-            return;
-          }
-
-          if (message.type === 'error') {
-            setStatus(message.message || 'Erro de sinalização.', 'error');
-            if (!settled) {
-              settled = true;
-              reject(new Error(message.message || 'Não foi possível entrar na sala.'));
-            }
-            return;
-          }
-
-          try {
-            await handleSignal(message);
-          } catch (error) {
-            console.error(error);
-            setStatus(`Falha na conexão WebRTC: ${error.message}`, 'error');
-          }
-        });
-
-        socket.addEventListener('close', () => {
-          if (!settled) {
-            settled = true;
-            reject(new Error('Conexão com o servidor de sinalização encerrada.'));
-          }
-          if (currentRole) setStatus('Desconectado do servidor.', 'error');
-        });
-
-        socket.addEventListener('error', () => {
-          if (!settled) {
-            settled = true;
-            reject(new Error('Não foi possível conectar ao servidor.'));
-          }
-        });
+    function updateLocalParticipant() {
+      participants.set(localPeerId, {
+        peerId: localPeerId,
+        name: displayNameInput.value.trim() || 'Participante',
+        role: currentRole,
+        muted: localMuted,
+        local: true
       });
+      renderParticipants();
+    }
+
+    function renderParticipants() {
+      const entries = [...participants.values()];
+      participantCount.textContent = String(entries.length);
+      participantList.replaceChildren();
+
+      for (const participant of entries) {
+        const row = document.createElement('li');
+        row.className = 'participant';
+        row.dataset.peerId = participant.peerId;
+        const dot = document.createElement('span');
+        dot.className = `participant-dot${participant.localMuted || participant.muted ? ' offline' : ''}`;
+        dot.dataset.speakingDot = 'true';
+        const name = document.createElement('span');
+        name.className = 'participant-name';
+        name.textContent = participant.local ? `${participant.name} (você)` : participant.name;
+        const meta = document.createElement('span');
+        meta.className = 'participant-meta';
+        const roleText = participant.role === 'host' ? 'Transmitindo' : 'Espectador';
+        const micText = participant.muted ? ' · Mic desligado' : ' · Mic ligado';
+        meta.textContent = `${roleText}${micText}`;
+        row.append(dot, name, meta);
+
+        if (!participant.local) {
+          const peer = peers.get(participant.peerId);
+          const audio = peer?.audioElement;
+          if (audio) row.append(audio);
+          const listen = document.createElement('button');
+          listen.type = 'button';
+          listen.className = 'secondary listen-button';
+          listen.textContent = audio?.srcObject ? 'Ouvir' : 'Sem voz';
+          listen.disabled = !audio?.srcObject;
+          listen.setAttribute('aria-label', `Ativar áudio de ${participant.name}`);
+          listen.addEventListener('click', () => audio?.play().then(() => { listen.textContent = 'Ouvindo'; }).catch(() => showToast('Áudio ainda não disponível.')));
+          row.append(listen);
+          const volume = document.createElement('input');
+          volume.className = 'volume-control';
+          volume.type = 'range';
+          volume.min = '0';
+          volume.max = '1';
+          volume.step = '0.05';
+          volume.value = String(audio?.volume ?? 1);
+          volume.setAttribute('aria-label', `Volume de ${participant.name}`);
+          volume.addEventListener('input', () => { if (audio) audio.volume = Number(volume.value); });
+          row.append(volume);
+        }
+        participantList.append(row);
+      }
+    }
+
+    function updateParticipant(peerId, changes) {
+      const participant = participants.get(peerId);
+      if (!participant) return;
+      Object.assign(participant, changes);
+      renderParticipants();
+    }
+
+    function setParticipantSpeaking(peerId, speaking) {
+      for (const dot of participantList.querySelectorAll('[data-speaking-dot]')) {
+        if (dot.parentElement.dataset.peerId === peerId) dot.classList.toggle('speaking', speaking);
+      }
+    }
+
+    function validPeerDescriptor(peer) {
+      return peer && typeof peer.peerId === 'string' && peer.peerId.length <= 64 &&
+        typeof peer.name === 'string' && ['host', 'viewer'].includes(peer.role);
+    }
+
+    function registerPeer(peer) {
+      if (!validPeerDescriptor(peer) || peer.peerId === localPeerId) return;
+      const existing = participants.get(peer.peerId);
+      participants.set(peer.peerId, {
+        peerId: peer.peerId,
+        name: peer.name.slice(0, 32),
+        role: peer.role,
+        muted: typeof peer.muted === 'boolean' ? peer.muted : existing?.muted ?? true
+      });
+      renderParticipants();
+    }
+
+    function closePeer(peerId) {
+      const state = peers.get(peerId);
+      if (state) {
+        clearInterval(state.speakingTimer);
+        state.audioElement?.pause();
+        if (state.audioElement) state.audioElement.srcObject = null;
+        state.audioSource?.disconnect();
+        state.pc.close();
+        peers.delete(peerId);
+      }
+      const departed = participants.get(peerId);
+      participants.delete(peerId);
+      renderParticipants();
+      if (departed?.role === 'host' && currentRole === 'viewer') {
+        video.srcObject = null;
+        video.hidden = true;
+        emptyState.hidden = false;
+        setMediaStatus('Transmissor desconectado');
+        setStatus('O transmissor saiu; aguardando uma possível reconexão.', 'error');
+      }
+    }
+
+    function closeAllPeers() {
+      for (const peerId of [...peers.keys()]) closePeer(peerId);
+      participants.clear();
+      if (localPeerId) updateLocalParticipant();
+    }
+
+    function isOfferer(peerId) {
+      const peer = participants.get(peerId);
+      if (currentRole === 'host' && peer?.role === 'viewer') return true;
+      if (currentRole === 'viewer' && peer?.role === 'host') return false;
+      return Boolean(localPeerId && localPeerId < peerId);
     }
 
     function createPeer(peerId) {
       if (peers.has(peerId)) return peers.get(peerId);
-
       const pc = new RTCPeerConnection(rtcConfig);
-      const state = { pc, pendingCandidates: [] };
+      const audioTransceiver = pc.addTransceiver('audio', { direction: 'sendrecv' });
+      const state = {
+        pc,
+        audioSender: audioTransceiver.sender,
+        pendingCandidates: [],
+        makingOffer: false,
+        offerSent: false,
+        restarts: 0,
+        audioElement: new Audio(),
+        analyser: null,
+        audioSource: null,
+        speakingTimer: null,
+        videoSender: null
+      };
+      state.audioElement.autoplay = true;
+      state.audioElement.playsInline = true;
+      state.audioElement.volume = 1;
       peers.set(peerId, state);
 
       if (currentRole === 'host' && localStream) {
-        for (const track of localStream.getTracks()) pc.addTrack(track, localStream);
+        for (const track of localStream.getVideoTracks()) state.videoSender = pc.addTrack(track, localStream);
+      }
+      if (microphoneStream?.getAudioTracks()[0]) {
+        state.audioSender.replaceTrack(microphoneStream.getAudioTracks()[0]).catch(console.error);
       }
 
       pc.onicecandidate = ({ candidate }) => {
         if (candidate) sendSignal({ type: 'candidate', target: peerId, candidate });
       };
 
-      pc.onconnectionstatechange = () => {
-        if (pc.connectionState === 'connected') setStatus('Conexão P2P estabelecida.', 'live');
-        if (pc.connectionState === 'failed') setStatus('Conexão direta falhou. Pode ser necessário configurar TURN.', 'error');
+      pc.ontrack = ({ track }) => {
+        if (track.kind === 'video') {
+          if (currentRole === 'viewer') {
+            video.srcObject = new MediaStream([track]);
+            video.muted = false;
+            video.hidden = false;
+            emptyState.hidden = true;
+            video.play().catch(() => showToast('Clique no player para iniciar a transmissão.'));
+            setMediaStatus('Recebendo tela');
+          }
+          return;
+        }
+
+        if (track.kind === 'audio') {
+          const remoteStream = new MediaStream([track]);
+          state.audioElement.srcObject = remoteStream;
+          state.audioElement.play().catch(() => showToast('Interaja com a página para liberar o áudio da voz.'));
+          createSpeakingMeter(peerId, state, remoteStream);
+          track.addEventListener('ended', () => setParticipantSpeaking(peerId, false), { once: true });
+          renderParticipants();
+        }
       };
 
-      pc.ontrack = ({ streams }) => {
-        if (currentRole !== 'viewer' || !streams[0]) return;
-        video.srcObject = streams[0];
-        video.muted = false;
-        video.hidden = false;
-        emptyState.hidden = true;
-        video.play().catch(() => setStatus('Vídeo conectado. Use os controles do player para iniciar a reprodução e o áudio.', 'live'));
-        setStatus('Recebendo transmissão P2P.', 'live');
+      pc.onconnectionstatechange = () => {
+        if (pc.connectionState === 'connected') {
+          $('#connectionMetrics').textContent = 'P2P conectado';
+          $('#connectionInfo').textContent = 'Áudio e vídeo seguem diretamente entre navegadores.';
+        } else if (pc.connectionState === 'failed') {
+          restartPeer(peerId, state);
+        } else if (pc.connectionState === 'disconnected') {
+          $('#connectionMetrics').textContent = 'Conexão instável; tentando recuperar...';
+        }
       };
 
       return state;
     }
 
-    async function flushCandidates(state) {
-      for (const candidate of state.pendingCandidates) {
-        await state.pc.addIceCandidate(candidate);
+    async function createSpeakingMeter(peerId, state, stream) {
+      try {
+        audioContext ||= new AudioContext();
+        if (audioContext.state === 'suspended') await audioContext.resume();
+        state.audioSource?.disconnect();
+        state.audioSource = audioContext.createMediaStreamSource(stream);
+        state.analyser = audioContext.createAnalyser();
+        state.analyser.fftSize = 256;
+        state.audioSource.connect(state.analyser);
+        const samples = new Uint8Array(state.analyser.fftSize);
+        clearInterval(state.speakingTimer);
+        state.speakingTimer = setInterval(() => {
+          if (!state.analyser || (peerId !== localPeerId && !peers.has(peerId))) return;
+          if (peerId === localPeerId && localMuted) { setParticipantSpeaking(peerId, false); return; }
+          state.analyser.getByteTimeDomainData(samples);
+          let power = 0;
+          for (const sample of samples) power += (sample - 128) ** 2;
+          setParticipantSpeaking(peerId, Math.sqrt(power / samples.length) > 5.5);
+        }, 180);
+      } catch (error) {
+        console.warn('Indicador de voz indisponível:', error);
       }
+    }
+
+    async function initiatePeer(peerId, state) {
+      if (state.offerSent || state.makingOffer || !isOfferer(peerId)) return;
+      state.makingOffer = true;
+      try {
+        const offer = await state.pc.createOffer();
+        await state.pc.setLocalDescription(offer);
+        sendSignal({ type: 'offer', target: peerId, sdp: state.pc.localDescription });
+        state.offerSent = true;
+      } finally {
+        state.makingOffer = false;
+      }
+    }
+
+    async function flushCandidates(state) {
+      for (const candidate of state.pendingCandidates) await state.pc.addIceCandidate(candidate);
       state.pendingCandidates.length = 0;
     }
 
-    async function handleSignal(message) {
-      if (message.type === 'viewer-joined' && currentRole === 'host') {
-        const state = createPeer(message.peerId);
-        const offer = await state.pc.createOffer();
+    async function restartPeer(peerId, state) {
+      if (!isOfferer(peerId) || state.restarts >= 2 || intentionalClose) {
+        $('#connectionMetrics').textContent = 'P2P indisponível; confira a rede ou a necessidade de TURN.';
+        return;
+      }
+      state.restarts += 1;
+      state.offerSent = false;
+      try {
+        state.pc.restartIce();
+        const offer = await state.pc.createOffer({ iceRestart: true });
         await state.pc.setLocalDescription(offer);
-        sendSignal({ type: 'offer', target: message.peerId, sdp: state.pc.localDescription });
+        sendSignal({ type: 'offer', target: peerId, sdp: state.pc.localDescription });
+        state.offerSent = true;
+      } catch (error) {
+        console.warn('Falha ao reiniciar ICE:', error);
+      }
+    }
+
+    async function handleSignal(message) {
+      if (message.type === 'peer-joined') {
+        if (!validPeerDescriptor(message.peer)) return;
+        registerPeer(message.peer);
+        const state = createPeer(message.peer.peerId);
+        if (isOfferer(message.peer.peerId)) await initiatePeer(message.peer.peerId, state);
         return;
       }
 
-      if (message.type === 'offer' && currentRole === 'viewer') {
-        const state = createPeer(message.from);
+      if (message.type === 'offer' && typeof message.from === 'string' && message.sdp?.type === 'offer') {
+        let state = peers.get(message.from);
+        if (!state) state = createPeer(message.from);
         await state.pc.setRemoteDescription(message.sdp);
         await flushCandidates(state);
         const answer = await state.pc.createAnswer();
@@ -327,7 +644,7 @@
         return;
       }
 
-      if (message.type === 'answer' && currentRole === 'host') {
+      if (message.type === 'answer' && typeof message.from === 'string' && message.sdp?.type === 'answer') {
         const state = peers.get(message.from);
         if (!state) return;
         await state.pc.setRemoteDescription(message.sdp);
@@ -335,7 +652,7 @@
         return;
       }
 
-      if (message.type === 'candidate') {
+      if (message.type === 'candidate' && typeof message.from === 'string') {
         const state = peers.get(message.from);
         if (!state) return;
         if (state.pc.remoteDescription) await state.pc.addIceCandidate(message.candidate);
@@ -343,102 +660,608 @@
         return;
       }
 
-      if (message.type === 'peer-left') {
+      if (message.type === 'chat' && typeof message.text === 'string' && message.text.length <= 1000 && typeof message.name === 'string') {
+        appendChatMessage(message);
+        return;
+      }
+
+      if (message.type === 'peer-state' && typeof message.peerId === 'string' && typeof message.muted === 'boolean') {
+        updateParticipant(message.peerId, { muted: message.muted });
+        if (message.muted) setParticipantSpeaking(message.peerId, false);
+        return;
+      }
+
+      if (message.type === 'peer-left' && typeof message.peerId === 'string') {
         closePeer(message.peerId);
-        if (currentRole === 'viewer') setStatus('O transmissor encerrou a conexão.', '');
+        if (participants.size <= 1) $('#connectionMetrics').textContent = 'Aguardando participantes.';
+        return;
+      }
+
+      if (message.type === 'pointer' && message.point && Number.isFinite(message.point.x) && Number.isFinite(message.point.y)) {
+        remotePointer.style.left = `${Math.max(0, Math.min(1, message.point.x)) * 100}%`;
+        remotePointer.style.top = `${Math.max(0, Math.min(1, message.point.y)) * 100}%`;
+        remotePointer.classList.toggle('active', message.active === true);
+        return;
+      }
+
+      if (message.type === 'draw' && Array.isArray(message.points) && message.points.length <= 80 && /^#[0-9a-fA-F]{6}$/.test(message.color)) {
+        drawStroke(message.points, message.color);
+        return;
+      }
+
+      if (message.type === 'clear-draw') clearCanvas();
+    }
+
+    function createSocketConnection(reconnecting = false) {
+      return new Promise((resolve, reject) => {
+        const generation = ++socketGeneration;
+        const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const nextSocket = new WebSocket(`${protocol}//${location.host}/signal`);
+        socket = nextSocket;
+        let settled = false;
+        const timeout = setTimeout(() => {
+          if (!settled) {
+            settled = true;
+            nextSocket.close();
+            reject(new Error('Tempo esgotado ao conectar ao servidor de sinalização.'));
+          }
+        }, 10000);
+
+        nextSocket.addEventListener('open', () => {
+          if (generation !== socketGeneration) return;
+          nextSocket.send(JSON.stringify({
+            type: 'join',
+            role: currentRole,
+            room: roomCode,
+            name: displayNameInput.value.trim().slice(0, 32) || 'Participante',
+            muted: localMuted
+          }));
+        });
+
+        nextSocket.addEventListener('message', async (event) => {
+          if (generation !== socketGeneration) return;
+          let message;
+          try { message = JSON.parse(event.data); }
+          catch { setStatus('O servidor enviou uma mensagem inválida.', 'error'); return; }
+
+          if (!message || typeof message !== 'object') return;
+          if (message.type === 'joined') {
+            clearTimeout(timeout);
+            settled = true;
+            localPeerId = message.peerId;
+            $('#micButton').disabled = false;
+            $('#audioInput').disabled = false;
+            roomInput.disabled = true;
+            shareButton.disabled = true;
+            watchButton.disabled = true;
+            stopButton.disabled = false;
+            roomLink.textContent = `${message.temporary ? 'Sala temporária · ' : ''}Código: ${roomCode}`;
+            participants.clear();
+            for (const peer of Array.isArray(message.peers) ? message.peers : []) registerPeer(peer);
+            updateLocalParticipant();
+            for (const peer of participants.values()) {
+              if (peer.local) continue;
+              const state = createPeer(peer.peerId);
+              if (isOfferer(peer.peerId)) await initiatePeer(peer.peerId, state);
+            }
+            refreshAudioInputs();
+            reconnectAttempt = 0;
+            shouldReconnect = true;
+            const hasDisplayAudio = localStream?.getAudioTracks().some((track) => track.readyState === 'live');
+            const connectedStatus = currentRole !== 'host'
+              ? (reconnecting ? 'Reconectado à sala.' : 'Na sala; aguardando a transmissão.')
+              : hasDisplayAudio
+                ? 'Tela compartilhada com áudio de captura; aguardando amigos.'
+                : 'Tela compartilhada sem áudio de sistema. Firefox não captura esse áudio; tente Chrome/Edge.';
+            setStatus(connectedStatus, 'live');
+            $('#connectionMetrics').textContent = `${participants.size} participante(s) · P2P conectando`;
+            if (currentRole === 'host') setMediaStatus('Tela compartilhada');
+            else setMediaStatus('Aguardando transmissão');
+            startMetrics();
+            resolve();
+            return;
+          }
+
+          if (message.type === 'error') {
+            if (!settled) {
+              clearTimeout(timeout);
+              settled = true;
+              reject(new Error(message.message || 'Não foi possível entrar na sala.'));
+            } else {
+              showToast(message.message || 'Erro na sala.');
+            }
+            return;
+          }
+
+          try { await handleSignal(message); }
+          catch (error) {
+            console.error(error);
+            $('#connectionMetrics').textContent = `Falha WebRTC: ${error.message}`;
+          }
+        });
+
+        nextSocket.addEventListener('close', () => {
+          clearTimeout(timeout);
+          if (generation !== socketGeneration) return;
+          if (!settled) {
+            settled = true;
+            reject(new Error('Conexão com o servidor de sinalização encerrada.'));
+          }
+          if (shouldReconnect && !intentionalClose) scheduleReconnect();
+        });
+
+        nextSocket.addEventListener('error', () => {
+          if (!settled) {
+            clearTimeout(timeout);
+            settled = true;
+            reject(new Error('Não foi possível conectar ao servidor. Verifique a rede e tente novamente.'));
+          }
+        });
+      });
+    }
+
+    function scheduleReconnect() {
+      if (reconnectTimer || intentionalClose) return;
+      if (reconnectAttempt >= 8) {
+        shouldReconnect = false;
+        setStatus('Desconectado. Use Retomar para entrar novamente na mesma sala.', 'error');
+        stopButton.textContent = 'Retomar sessão';
+        stopButton.disabled = false;
+        $('#connectionMetrics').textContent = 'Reconexão automática esgotada.';
+        return;
+      }
+      const delay = Math.min(1000 * (2 ** reconnectAttempt), 20000);
+      reconnectAttempt += 1;
+      setStatus(`Conexão perdida; tentando novamente em ${Math.ceil(delay / 1000)} s...`, 'error');
+      $('#connectionMetrics').textContent = 'Reconectando ao servidor de sinalização...';
+      closeAllPeers();
+      reconnectTimer = setTimeout(async () => {
+        reconnectTimer = null;
+        if (intentionalClose || !roomCode) return;
+        try { await createSocketConnection(true); }
+        catch (error) {
+          console.warn(error);
+          scheduleReconnect();
+        }
+      }, delay);
+    }
+
+    async function connect(role, room) {
+      currentRole = role;
+      roomCode = room;
+      shouldReconnect = true;
+      intentionalClose = false;
+      reconnectAttempt = 0;
+      setStatus('Conectando à sala...');
+      return createSocketConnection();
+    }
+
+    function appendChatMessage(message) {
+      const article = document.createElement('article');
+      article.className = 'chat-message';
+      const header = document.createElement('header');
+      const name = document.createElement('strong');
+      name.textContent = message.name.slice(0, 32);
+      const time = document.createElement('time');
+      time.dateTime = new Date(message.timestamp).toISOString();
+      time.textContent = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(message.timestamp);
+      const copy = document.createElement('button');
+      copy.type = 'button';
+      copy.className = 'secondary';
+      copy.textContent = 'Copiar';
+      copy.setAttribute('aria-label', 'Copiar mensagem');
+      copy.addEventListener('click', () => copyText(message.text));
+      const body = document.createElement('p');
+      body.textContent = message.text;
+      header.append(name, time, copy);
+      article.append(header, body);
+      chatLog.append(article);
+      while (chatLog.children.length > 150) chatLog.firstElementChild.remove();
+      chatLog.scrollTop = chatLog.scrollHeight;
+    }
+
+    async function copyText(value) {
+      try {
+        await navigator.clipboard.writeText(value);
+        showToast('Copiado.');
+      } catch {
+        const temporary = document.createElement('textarea');
+        temporary.value = value;
+        temporary.style.position = 'fixed';
+        temporary.style.opacity = '0';
+        document.body.append(temporary);
+        temporary.select();
+        document.execCommand('copy');
+        temporary.remove();
+        showToast('Copiado.');
       }
     }
 
-    function closePeer(peerId) {
-      const state = peers.get(peerId);
-      if (!state) return;
-      state.pc.close();
-      peers.delete(peerId);
+    async function refreshAudioInputs() {
+      if (!navigator.mediaDevices?.enumerateDevices) return;
+      try {
+        const selected = audioInput.value;
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const inputs = devices.filter((device) => device.kind === 'audioinput');
+        audioInput.replaceChildren();
+        for (const [index, device] of inputs.entries()) {
+          const option = document.createElement('option');
+          option.value = device.deviceId;
+          option.textContent = device.label || `Microfone ${index + 1}`;
+          audioInput.append(option);
+        }
+        if (!inputs.length) {
+          const option = document.createElement('option');
+          option.value = '';
+          option.textContent = 'Nenhum microfone encontrado';
+          audioInput.append(option);
+        } else if (inputs.some((device) => device.deviceId === selected)) {
+          audioInput.value = selected;
+        }
+      } catch (error) {
+        console.warn('Não foi possível listar microfones:', error);
+      }
+    }
+
+    async function acquireMicrophone() {
+      if (!navigator.mediaDevices?.getUserMedia) throw new Error('Este navegador não permite acesso ao microfone nesta origem. Use HTTPS.');
+      const audio = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+      if (audioInput.value) audio.deviceId = { exact: audioInput.value };
+      try {
+        microphoneStream = await navigator.mediaDevices.getUserMedia({ audio, video: false });
+      } catch (error) {
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') throw new Error('Permissão de microfone negada. Autorize o microfone nas configurações do navegador.');
+        if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') throw new Error('Nenhum microfone foi encontrado. Conecte um dispositivo e tente novamente.');
+        throw error;
+      }
+      const track = microphoneStream.getAudioTracks()[0];
+      if (!track) throw new Error('O navegador não retornou uma faixa de microfone.');
+      track.enabled = true;
+      track.addEventListener('ended', () => setMicrophoneEnabled(false), { once: true });
+      await refreshAudioInputs();
+      if (audioContext?.state === 'suspended') await audioContext.resume();
+      return track;
+    }
+
+    async function setMicrophoneEnabled(enabled) {
+      if (enabled && !microphoneStream) {
+        micButton.disabled = true;
+        $('#micStatus').textContent = 'Solicitando permissão para o microfone...';
+        try { await acquireMicrophone(); }
+        catch (error) {
+          $('#micStatus').textContent = error.message;
+          showToast(error.message);
+          micButton.disabled = !currentRole;
+          return;
+        }
+      }
+      localMuted = !enabled;
+      for (const track of microphoneStream?.getAudioTracks() || []) track.enabled = enabled;
+      await Promise.all([...peers.values()].map((state) => state.audioSender.replaceTrack(enabled ? microphoneStream?.getAudioTracks()[0] || null : null).catch((error) => console.warn('Falha ao alternar microfone:', error))));
+      if (enabled) await createSpeakingMeter(localPeerId, localAudioMonitor, microphoneStream);
+      else {
+        clearInterval(localAudioMonitor.speakingTimer);
+        setParticipantSpeaking(localPeerId, false);
+      }
+      micButton.textContent = enabled ? 'Microfone ligado' : 'Microfone desligado';
+      micButton.classList.toggle('mic-off', !enabled);
+      micButton.setAttribute('aria-pressed', String(enabled));
+      $('#micStatus').textContent = enabled ? 'Seu microfone está ativo nesta sala.' : 'Microfone desligado.';
+      updateLocalParticipant();
+      sendSignal({ type: 'state', muted: localMuted });
+    }
+
+    async function replaceMicrophone() {
+      if (!microphoneStream || localMuted) return;
+      try {
+        const oldStream = microphoneStream;
+        await acquireMicrophone();
+        const nextTrack = microphoneStream.getAudioTracks()[0];
+        await Promise.all([...peers.values()].map((state) => state.audioSender.replaceTrack(nextTrack)));
+        for (const track of oldStream.getTracks()) track.stop();
+        if (!localMuted) await createSpeakingMeter(localPeerId, localAudioMonitor, microphoneStream);
+      } catch (error) {
+        $('#micStatus').textContent = error.message;
+        showToast(error.message);
+      }
+    }
+
+    function resizeCanvas() {
+      const bounds = stageShell.getBoundingClientRect();
+      const scale = window.devicePixelRatio || 1;
+      annotationCanvas.width = Math.max(1, Math.round(bounds.width * scale));
+      annotationCanvas.height = Math.max(1, Math.round(bounds.height * scale));
+      annotationContext.setTransform(scale, 0, 0, scale, 0, 0);
+    }
+
+    function drawStroke(points, color = '#a7e3b4') {
+      if (!Array.isArray(points) || points.length < 2) return;
+      const width = stageShell.clientWidth;
+      const height = stageShell.clientHeight;
+      annotationContext.strokeStyle = color;
+      annotationContext.lineWidth = 3;
+      annotationContext.lineCap = 'round';
+      annotationContext.lineJoin = 'round';
+      annotationContext.beginPath();
+      annotationContext.moveTo(points[0].x * width, points[0].y * height);
+      for (const point of points.slice(1)) annotationContext.lineTo(point.x * width, point.y * height);
+      annotationContext.stroke();
+    }
+
+    function clearCanvas() {
+      annotationContext.clearRect(0, 0, stageShell.clientWidth, stageShell.clientHeight);
+    }
+
+    function pointerPoint(event) {
+      const bounds = stageShell.getBoundingClientRect();
+      return {
+        x: Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width)),
+        y: Math.max(0, Math.min(1, (event.clientY - bounds.top) / bounds.height))
+      };
+    }
+
+    function setTools(pointer, draw) {
+      pointerEnabled = pointer;
+      drawEnabled = draw;
+      $('#pointerButton').setAttribute('aria-pressed', String(pointer));
+      $('#drawButton').setAttribute('aria-pressed', String(draw));
+      annotationCanvas.classList.toggle('active', draw);
+    }
+
+    async function updateConnectionMetrics() {
+      const results = await Promise.all([...peers.entries()].map(async ([peerId, state]) => {
+        try {
+          const stats = await state.pc.getStats();
+          let rtt = null;
+          let loss = 0;
+          for (const report of stats.values()) {
+            if (report.type === 'candidate-pair' && report.state === 'succeeded' && report.nominated && Number.isFinite(report.currentRoundTripTime)) rtt = report.currentRoundTripTime;
+            if (report.type === 'remote-inbound-rtp' && report.kind === 'video' && report.packetsReceived + report.packetsLost > 0) loss = report.packetsLost / (report.packetsReceived + report.packetsLost);
+          }
+          if (currentRole === 'host' && state.videoSender) {
+            const parameters = state.videoSender.getParameters();
+            if (parameters.encodings?.length) {
+              parameters.encodings[0].maxBitrate = rtt > 0.35 || loss > 0.08 ? 900000 : rtt > 0.18 || loss > 0.03 ? 1600000 : 2500000;
+              await state.videoSender.setParameters(parameters).catch(() => {});
+            }
+          }
+          return { peerId, rtt, loss };
+        } catch { return null; }
+      }));
+      const valid = results.filter((result) => result && result.rtt !== null);
+      if (valid.length) {
+        const average = valid.reduce((sum, result) => sum + result.rtt, 0) / valid.length;
+        const worstLoss = Math.max(...valid.map((result) => result.loss));
+        const quality = average < 0.15 && worstLoss < 0.03 ? 'Boa' : average < 0.35 && worstLoss < 0.08 ? 'Regular' : 'Instável';
+        $('#connectionMetrics').textContent = `${participants.size} participante(s) · RTT ~${Math.round(average * 1000)} ms · ${quality}`;
+      }
+    }
+
+    function startMetrics() {
+      clearInterval(metricsTimer);
+      metricsTimer = setInterval(updateConnectionMetrics, 5000);
+      updateConnectionMetrics();
     }
 
     function stopSession() {
-      if (socket && socket.readyState < WebSocket.CLOSING) socket.close();
-      for (const peerId of peers.keys()) closePeer(peerId);
-      if (localStream) {
-        for (const track of localStream.getTracks()) track.stop();
-        localStream = null;
+      if (currentRole && (!shouldReconnect || $('#stopButton').textContent === 'Retomar sessão')) {
+        stopButton.textContent = 'Encerrar sessão';
+        reconnectAttempt = 0;
+        shouldReconnect = true;
+        intentionalClose = false;
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+        setStatus('Retomando conexão à sala...');
+        createSocketConnection(true).catch((error) => {
+          setStatus(error.message, 'error');
+          scheduleReconnect();
+        });
+        return;
       }
+
+      intentionalClose = true;
+      shouldReconnect = false;
+      ++socketGeneration;
+      clearTimeout(reconnectTimer);
+      clearInterval(metricsTimer);
+      clearTimeout(toastTimer);
+      if (socket && socket.readyState < WebSocket.CLOSING) socket.close(1000, 'Sessão encerrada');
+      closeAllPeers();
+      if (microphoneStream) for (const track of microphoneStream.getTracks()) track.stop();
+      clearInterval(localAudioMonitor.speakingTimer);
+      microphoneStream = null;
+      if (localStream) for (const track of localStream.getTracks()) track.stop();
+      localStream = null;
+      if (audioContext) { audioContext.close().catch(() => {}); audioContext = null; }
       video.srcObject = null;
       video.muted = false;
       video.hidden = true;
       emptyState.hidden = false;
       roomLink.textContent = '';
       currentRole = null;
+      roomCode = null;
+      localPeerId = null;
+      participants.clear();
+      localMuted = true;
+      roomInput.disabled = false;
       shareButton.disabled = false;
       watchButton.disabled = false;
+      micButton.disabled = true;
+      audioInput.disabled = true;
       stopButton.disabled = true;
+      stopButton.textContent = 'Encerrar sessão';
+      micButton.textContent = 'Microfone desligado';
+      micButton.classList.add('mic-off');
+      micButton.setAttribute('aria-pressed', 'false');
+      $('#micStatus').textContent = 'Ative para solicitar permissão e entrar na conversa por voz.';
+      chatLog.replaceChildren();
+      clearCanvas();
+      setTools(false, false);
+      setMediaStatus('Sem transmissão ativa');
+      $('#connectionMetrics').textContent = 'Aguardando conexão.';
       setStatus('Sessão encerrada.');
+      renderParticipants();
     }
 
-    shareButton.addEventListener('click', async () => {
+    async function beginSession(role) {
       const room = validRoom();
       if (!room) return;
-      if (!navigator.mediaDevices?.getDisplayMedia) {
-        setStatus('Captura de tela não suportada neste navegador. Use Chrome ou Edge atualizado em localhost ou HTTPS.', 'error');
-        return;
-      }
-
+      localStorage.setItem('minhatela-name', displayNameInput.value.trim().slice(0, 32));
       shareButton.disabled = true;
       watchButton.disabled = true;
-      setStatus('Selecione a tela ou janela para compartilhar.');
-
       try {
-        localStream = await navigator.mediaDevices.getDisplayMedia({
-          video: { frameRate: { ideal: 60, max: 60 } },
-          audio: true
-        });
-        const videoTrack = localStream.getVideoTracks()[0];
-        if (!videoTrack) throw new Error('A captura não forneceu uma faixa de vídeo.');
-        videoTrack.addEventListener('ended', stopSession, { once: true });
-        video.srcObject = localStream;
-        video.muted = true;
-        video.hidden = false;
-        emptyState.hidden = true;
-        video.play().catch(() => setStatus('Captura ativa; a prévia local não pôde iniciar a reprodução.', 'error'));
-        await connect('host', room);
-        stopButton.disabled = false;
-        roomLink.textContent = `Código para os espectadores: ${room}`;
-      } catch (error) {
-        console.error(error);
-        if (localStream) {
-          for (const track of localStream.getTracks()) track.stop();
-          localStream = null;
+        if (role === 'host') {
+          if (!navigator.mediaDevices?.getDisplayMedia) throw new Error('Captura não suportada neste navegador. Use Chrome/Edge desktop em HTTPS ou localhost.');
+          setStatus('Selecione a tela ou janela para compartilhar.');
+          localStream = await navigator.mediaDevices.getDisplayMedia({
+            video: { frameRate: { ideal: 60, max: 60 } },
+            audio: true
+          });
+          const videoTrack = localStream.getVideoTracks()[0];
+          if (!videoTrack) throw new Error('A captura não forneceu uma faixa de vídeo.');
+          videoTrack.addEventListener('ended', stopSession, { once: true });
+          video.srcObject = localStream;
+          video.muted = true;
+          video.hidden = false;
+          emptyState.hidden = true;
+          video.play().catch(() => showToast('A prévia local não pôde iniciar a reprodução.'));
+          setMediaStatus('Prévia da tela ativa');
         }
+        await connect(role, room);
+      } catch (error) {
+        shouldReconnect = false;
+        intentionalClose = true;
         if (socket && socket.readyState < WebSocket.CLOSING) socket.close();
+        if (localStream) for (const track of localStream.getTracks()) track.stop();
+        localStream = null;
+        video.srcObject = null;
+        video.hidden = true;
+        emptyState.hidden = false;
         shareButton.disabled = false;
         watchButton.disabled = false;
-        const message = error.name === 'NotAllowedError'
-          ? 'Captura cancelada ou não permitida.'
-          : error.name === 'NotSupportedError'
-            ? 'Este ambiente não suporta captura de tela. Abra a página no Chrome ou Edge desktop atualizado em localhost ou HTTPS.'
-            : `Falha na captura ou conexão (${error.name}): ${error.message}`;
+        const message = error.name === 'NotAllowedError' ? 'Captura cancelada ou permissão negada.' : error.name === 'NotSupportedError' ? 'Este ambiente não suporta captura de tela. Use Chrome/Edge desktop.' : error.message;
         setStatus(message, 'error');
       }
+    }
+
+    shareButton.addEventListener('click', () => beginSession('host'));
+    watchButton.addEventListener('click', () => beginSession('viewer'));
+    stopButton.addEventListener('click', stopSession);
+    micButton.addEventListener('click', () => setMicrophoneEnabled(localMuted ? true : false));
+    audioInput.addEventListener('change', replaceMicrophone);
+    navigator.mediaDevices?.addEventListener?.('devicechange', refreshAudioInputs);
+
+    $('#chatForm').addEventListener('submit', (event) => {
+      event.preventDefault();
+      const text = chatInput.value.trim();
+      if (!text || text.length > 1000) return;
+      if (!sendSignal({ type: 'chat', text })) { showToast('Conecte-se à sala para enviar mensagens.'); return; }
+      chatInput.value = '';
     });
 
-    watchButton.addEventListener('click', async () => {
-      const room = validRoom();
-      if (!room) return;
-      shareButton.disabled = true;
-      watchButton.disabled = true;
-      setStatus('Conectando à sala...');
+    $('#emojiButton').addEventListener('click', () => {
+      const emoji = ['😀', '😂', '❤️', '👍', '🎮'][Math.floor(Math.random() * 5)];
+      const start = chatInput.selectionStart;
+      const end = chatInput.selectionEnd;
+      chatInput.setRangeText(emoji, start, end, 'end');
+      chatInput.focus();
+    });
+
+    $('#chatToggle').addEventListener('click', (event) => {
+      const collapsed = chatBlock.classList.toggle('collapsed');
+      event.currentTarget.textContent = collapsed ? 'Expandir' : 'Minimizar';
+      event.currentTarget.setAttribute('aria-expanded', String(!collapsed));
+      event.currentTarget.setAttribute('aria-label', collapsed ? 'Expandir chat' : 'Minimizar chat');
+    });
+
+    $('#copyRoomButton').addEventListener('click', () => copyText(roomInput.value.trim()));
+    $('#pointerButton').addEventListener('click', () => setTools(!pointerEnabled, false));
+    $('#drawButton').addEventListener('click', () => setTools(false, !drawEnabled));
+    $('#clearButton').addEventListener('click', () => {
+      clearCanvas();
+      sendSignal({ type: 'clear-draw' });
+    });
+
+    $('#controlsButton').addEventListener('click', (event) => {
+      if (theaterEnabled) {
+        theaterEnabled = false;
+        workspace.classList.remove('theater-mode');
+        $('#theaterButton').setAttribute('aria-pressed', 'false');
+        controlsHidden = false;
+        workspace.classList.remove('controls-hidden');
+        event.currentTarget.setAttribute('aria-pressed', 'false');
+        requestAnimationFrame(resizeCanvas);
+        return;
+      }
+      controlsHidden = !controlsHidden;
+      workspace.classList.toggle('controls-hidden', controlsHidden);
+      event.currentTarget.setAttribute('aria-pressed', String(controlsHidden));
+      requestAnimationFrame(resizeCanvas);
+    });
+
+    $('#theaterButton').addEventListener('click', (event) => {
+      theaterEnabled = !theaterEnabled;
+      workspace.classList.toggle('theater-mode', theaterEnabled);
+      event.currentTarget.setAttribute('aria-pressed', String(theaterEnabled));
+      requestAnimationFrame(resizeCanvas);
+    });
+
+    $('#fullscreenButton').addEventListener('click', async () => {
       try {
-        await connect('viewer', room);
-        stopButton.disabled = false;
-        roomLink.textContent = `Assistindo à sala: ${room}`;
-      } catch (error) {
-        shareButton.disabled = false;
-        watchButton.disabled = false;
-        setStatus(error.message, 'error');
+        if (document.fullscreenElement) await document.exitFullscreen();
+        else await stageShell.requestFullscreen();
+      } catch (error) { showToast(`Tela cheia indisponível: ${error.message}`); }
+    });
+    document.addEventListener('fullscreenchange', () => requestAnimationFrame(resizeCanvas));
+    window.addEventListener('resize', resizeCanvas);
+
+    stageShell.addEventListener('pointermove', (event) => {
+      if (pointerEnabled) {
+        const now = performance.now();
+        if (now - lastPointerSent >= 35) {
+          sendSignal({ type: 'pointer', point: pointerPoint(event), active: true });
+          lastPointerSent = now;
+        }
+      }
+      if (drawing) {
+        const point = pointerPoint(event);
+        drawPoints.push(point);
+        if (drawPoints.length > 80) drawPoints = drawPoints.filter((_, index) => index % 2 === 0);
+        if (drawPoints.length > 1) drawStroke(drawPoints.slice(-2));
       }
     });
+    stageShell.addEventListener('pointerleave', () => {
+      if (pointerEnabled) sendSignal({ type: 'pointer', point: { x: 0, y: 0 }, active: false });
+    });
+    annotationCanvas.addEventListener('pointerdown', (event) => {
+      if (!drawEnabled) return;
+      drawing = true;
+      drawPoints = [pointerPoint(event)];
+      annotationCanvas.setPointerCapture(event.pointerId);
+    });
+    annotationCanvas.addEventListener('pointerup', () => {
+      if (!drawing) return;
+      drawing = false;
+      if (drawPoints.length >= 2) {
+        const color = '#a7e3b4';
+        sendSignal({ type: 'draw', points: drawPoints, color });
+      }
+      drawPoints = [];
+    });
 
-    stopButton.addEventListener('click', stopSession);
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && (pointerEnabled || drawEnabled)) setTools(false, false);
+      const target = event.target;
+      if (!(event.altKey && event.shiftKey) || target.matches('input, textarea, select, [contenteditable="true"]')) return;
+      const key = event.key.toLowerCase();
+      if (key === 'm' && currentRole) { event.preventDefault(); setMicrophoneEnabled(localMuted); }
+      if (key === 't') { event.preventDefault(); $('#theaterButton').click(); }
+      if (key === 'f') { event.preventDefault(); $('#fullscreenButton').click(); }
+      if (key === 'c') { event.preventDefault(); $('#controlsButton').click(); }
+    });
+
+    resizeCanvas();
+    renderParticipants();
   </script>
 </body>
 </html>
