@@ -50,7 +50,11 @@ const webSocketServer = new WebSocketServer({
     if (!origin) return true;
 
     try {
-      return new URL(origin).host === req.headers.host;
+      const originHost = new URL(origin).host;
+      if (originHost === req.headers.host) return true;
+      if (process.env.BASE44_PREVIEW_MODE === '1' && process.env.BASE44_PUBLIC_HOST_SUFFIX &&
+          originHost.endsWith(process.env.BASE44_PUBLIC_HOST_SUFFIX)) return true;
+      return false;
     } catch {
       return false;
     }
