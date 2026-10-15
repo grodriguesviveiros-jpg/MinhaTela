@@ -8,14 +8,22 @@
   <style>
     :root {
       color-scheme: dark;
-      --bg: #111513;
-      --panel: #1a211e;
-      --line: #34423b;
-      --text: #ecf2ed;
-      --muted: #a4b3aa;
+      --bg: #0d1210;
+      --panel: #151c18;
+      --panel-soft: #1a231e;
+      --line: #33423a;
+      --line-soft: #243029;
+      --text: #eef4ef;
+      --muted: #9fb2a6;
       --green: #a7e3b4;
-      --green-ink: #142119;
+      --green-deep: #6fc48a;
+      --green-ink: #10231a;
       --red: #ff9b8d;
+      --radius: 10px;
+      --radius-sm: 7px;
+      --shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+      --shadow-soft: 0 4px 14px rgba(0, 0, 0, 0.25);
+      --ring: 0 0 0 3px rgba(167, 227, 180, 0.22);
     }
 
     * { box-sizing: border-box; }
@@ -25,9 +33,11 @@
       margin: 0;
       color: var(--text);
       background-color: var(--bg);
-      background-image: radial-gradient(ellipse at 12% 0%, #26372d 0, transparent 34%),
-        linear-gradient(135deg, transparent 49.8%, #ffffff08 50%, transparent 50.2%);
-      font-family: "Segoe UI Variable", "Segoe UI", sans-serif;
+      background-image:
+        radial-gradient(ellipse 80% 50% at 15% -5%, #27382e 0, transparent 60%),
+        radial-gradient(ellipse 60% 45% at 90% 5%, #1d2c24 0, transparent 55%);
+      background-attachment: fixed;
+      font-family: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
     }
 
     main {
@@ -42,12 +52,12 @@
       justify-content: space-between;
       gap: 16px;
       padding-bottom: 22px;
-      border-bottom: 1px solid var(--line);
+      border-bottom: 1px solid var(--line-soft);
     }
 
     .brand { display: flex; align-items: center; gap: 12px; }
-    .mark { width: 13px; height: 13px; background: var(--green); border-radius: 3px; transform: rotate(45deg); }
-    h1 { margin: 0; font-size: 20px; font-weight: 650; }
+    .mark { width: 13px; height: 13px; background: linear-gradient(135deg, var(--green), var(--green-deep)); border-radius: 3px; transform: rotate(45deg); box-shadow: 0 0 14px rgba(167, 227, 180, 0.45); }
+    h1 { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: .01em; }
     .eyebrow { color: var(--muted); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
 
     .workspace {
@@ -57,8 +67,8 @@
       padding-top: 24px;
     }
 
-    .controls { display: flex; flex-direction: column; gap: 18px; }
-    .control-block { padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+    .controls { display: flex; flex-direction: column; gap: 14px; }
+    .control-block { padding: 16px; background: var(--panel); border: 1px solid var(--line-soft); border-radius: var(--radius); box-shadow: var(--shadow-soft); }
     h2 { margin: 0 0 12px; font-size: 15px; font-weight: 620; }
     label { display: block; margin-bottom: 7px; color: var(--muted); font-size: 13px; }
 
@@ -67,36 +77,45 @@
       height: 42px;
       padding: 0 12px;
       color: var(--text);
-      background: #101512;
+      background: #0f1411;
       border: 1px solid var(--line);
-      border-radius: 5px;
+      border-radius: var(--radius-sm);
       font: inherit;
       letter-spacing: .04em;
+      transition: border-color 120ms ease, box-shadow 120ms ease;
     }
+
+    input:hover:not(:disabled), select:hover:not(:disabled) { border-color: var(--green-deep); }
+    input:focus-visible, select:focus-visible { border-color: var(--green); box-shadow: var(--ring); outline: none; }
+    input:disabled { opacity: .6; }
 
     button {
       min-height: 42px;
       padding: 0 14px;
       color: var(--green-ink);
-      background: var(--green);
-      border: 1px solid var(--green);
-      border-radius: 5px;
+      background: linear-gradient(180deg, #b9ecc5, var(--green) 55%, #8cd8a0);
+      border: 1px solid var(--green-deep);
+      border-radius: var(--radius-sm);
       font: inherit;
       font-weight: 650;
       cursor: pointer;
-      transition: background-color 120ms ease, border-color 120ms ease, opacity 120ms ease;
+      box-shadow: var(--shadow-soft);
+      transition: filter 120ms ease, transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease, border-color 120ms ease, opacity 120ms ease;
     }
 
-    button:hover:not(:disabled) { filter: brightness(1.08); }
+    button:hover:not(:disabled) { filter: brightness(1.07); transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35); }
+    button:active:not(:disabled) { transform: translateY(0); filter: brightness(.97); }
     button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
-    button.secondary { color: var(--text); background: transparent; border-color: var(--line); }
+    button.secondary { color: var(--text); background: var(--panel-soft); border-color: var(--line); box-shadow: none; }
+    button.secondary:hover:not(:disabled) { background: #1f2a23; border-color: var(--green-deep); }
     button:disabled { cursor: not-allowed; opacity: .55; }
     .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
 
     .status-row { display: flex; align-items: center; gap: 9px; color: var(--muted); font-size: 13px; }
-    .status-dot { width: 8px; height: 8px; flex: 0 0 auto; background: #718078; border-radius: 50%; }
-    .status-dot.live { background: var(--green); box-shadow: 0 0 10px #a7e36688; }
+    .status-dot { width: 8px; height: 8px; flex: 0 0 auto; margin-top: 5px; background: #718078; border-radius: 50%; }
+    .status-dot.live { background: var(--green); box-shadow: 0 0 10px #a7e36688; animation: pulse 2.2s ease-in-out infinite; }
     .status-dot.error { background: var(--red); }
+    @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(167, 227, 180, 0.5); } 50% { box-shadow: 0 0 0 6px rgba(167, 227, 180, 0); } }
     #status { min-height: 36px; margin-top: 9px; line-height: 1.45; }
     #roomLink { min-height: 18px; margin-top: 8px; overflow-wrap: anywhere; color: var(--muted); font-size: 12px; }
 
@@ -109,12 +128,13 @@
       overflow: hidden;
       background: #080a09;
       border: 1px solid var(--line);
-      border-radius: 6px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-soft);
     }
 
     video { display: block; width: 100%; max-height: min(72vh, 760px); aspect-ratio: 16 / 9; object-fit: contain; background: #080a09; }
     video[hidden] { display: none; }
-    .empty { padding: 24px; color: #87968d; text-align: center; font-size: 14px; }
+    .empty { padding: 28px 24px; color: #87968d; text-align: center; font-size: 14px; line-height: 1.6; }
     .empty strong { display: block; margin-bottom: 8px; color: #c6d1ca; font-size: 16px; font-weight: 580; }
     .footnote { margin: 15px 0 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
 
@@ -134,7 +154,7 @@
     .section-title h2 { margin-bottom: 0; }
     .count { color: var(--muted); font-size: 12px; }
     .participant-list { display: grid; gap: 7px; margin: 12px 0 0; padding: 0; list-style: none; }
-    .participant { display: grid; grid-template-columns: 9px minmax(0, 1fr) auto; align-items: center; gap: 8px; min-width: 0; }
+    .participant { display: grid; grid-template-columns: 9px minmax(0, 1fr) auto; align-items: center; gap: 8px; min-width: 0; padding: 7px 9px; background: var(--panel-soft); border: 1px solid var(--line-soft); border-radius: var(--radius-sm); }
     .participant-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
     .participant-meta { color: var(--muted); font-size: 11px; white-space: nowrap; }
     .listen-button { grid-column: 3; min-height: 26px; padding: 0 6px; font-size: 10px; }
@@ -145,14 +165,20 @@
     .volume-control { grid-column: 2 / 4; width: 100%; height: 14px; accent-color: var(--green); }
     .chat-block { display: flex; flex-direction: column; min-height: 170px; }
     .chat-block.collapsed { min-height: 0; }
-    .chat-log { display: flex; flex-direction: column; gap: 8px; max-height: 240px; min-height: 100px; overflow-y: auto; margin: 12px 0; padding: 0 4px 0 0; }
-    .chat-message { padding: 8px; border: 1px solid #29352f; border-radius: 4px; background: #121815; overflow-wrap: anywhere; }
+    .chat-log { display: flex; flex-direction: column; gap: 8px; max-height: 240px; min-height: 100px; overflow-y: auto; margin: 12px 0; padding: 0 4px 0 0; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+    .chat-log::-webkit-scrollbar { width: 6px; }
+    .chat-log::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+    .chat-message { padding: 8px 10px; border: 1px solid #26332c; border-radius: var(--radius-sm); background: #131a16; overflow-wrap: anywhere; }
+    .chat-message.own { background: #1a2b21; border-color: #2f4a3a; }
     .chat-message header { display: flex; gap: 8px; align-items: baseline; padding: 0; border: 0; }
     .chat-message strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
     .chat-message time { color: var(--muted); font-size: 10px; white-space: nowrap; }
     .chat-message p { margin: 5px 0 0; font-size: 13px; line-height: 1.4; white-space: pre-wrap; }
     .chat-message button { min-height: 24px; margin-left: auto; padding: 0 7px; font-size: 11px; }
-    .chat-form { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px; align-items: center; }
+    .chat-form { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px; align-items: center; }
+    .emoji-menu { position: absolute; bottom: 46px; left: 0; z-index: 10; display: flex; gap: 4px; padding: 6px; background: var(--panel-soft); border: 1px solid var(--line); border-radius: var(--radius-sm); box-shadow: var(--shadow); }
+    .emoji-menu button { min-height: 34px; min-width: 34px; padding: 0; font-size: 17px; background: transparent; border: 0; box-shadow: none; }
+    .emoji-menu button:hover { background: #22302a; transform: none; }
     .chat-form input { height: 38px; letter-spacing: 0; }
     .chat-form button { min-height: 38px; padding: 0 10px; }
     .chat-block.collapsed .chat-log, .chat-block.collapsed .chat-form { display: none; }
@@ -160,7 +186,7 @@
     .stage-toolbar { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; margin-bottom: 9px; }
     .stage-toolbar button { min-height: 34px; padding: 0 10px; font-size: 12px; }
     .stage-toolbar button[aria-pressed="true"] { color: var(--green-ink); background: var(--green); border-color: var(--green); }
-    .stage-shell { position: relative; display: grid; place-items: center; min-width: 0; min-height: 390px; overflow: hidden; background: #080a09; border: 1px solid var(--line); border-radius: 6px; }
+    .stage-shell { position: relative; display: grid; place-items: center; min-width: 0; min-height: 390px; overflow: hidden; background: #080a09; border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-soft); }
     .stage-shell video { max-height: min(72vh, 760px); }
     .stage-shell.is-theater { position: fixed; z-index: 20; inset: 12px; min-height: 0; border-color: #5f796a; box-shadow: 0 18px 80px #000b; }
     .stage-shell.is-theater video { max-height: calc(100vh - 26px); }
@@ -176,14 +202,15 @@
     .workspace.theater-mode .controls { display: none; }
     .workspace.theater-mode .stage-toolbar { position: relative; z-index: 21; }
     .screen-info { margin-right: auto; align-self: center; color: var(--muted); font-size: 11px; }
-    .toast { position: fixed; z-index: 50; left: 50%; bottom: 18px; max-width: calc(100% - 32px); padding: 9px 14px; color: var(--text); background: #27332c; border: 1px solid var(--line); border-radius: 5px; transform: translateX(-50%); }
+    .toast { position: fixed; z-index: 50; left: 50%; bottom: 18px; max-width: calc(100% - 32px); padding: 10px 16px; color: var(--text); background: #243129; border: 1px solid var(--line); border-radius: 999px; box-shadow: var(--shadow); transform: translateX(-50%); animation: toast-in 200ms ease; }
     .toast[hidden] { display: none; }
+    @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
     @media (max-width: 720px) {
       main { width: min(100% - 24px, 720px); padding-top: 18px; }
       .workspace { grid-template-columns: 1fr; gap: 14px; }
       .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-      .control-block { padding-bottom: 12px; }
+      .control-block { padding: 12px; }
       .screen, .stage-shell { min-height: 220px; }
       video, .stage-shell video { max-height: 55vh; }
       .chat-block { grid-column: 1 / -1; }
@@ -210,7 +237,7 @@
           <label for="room">Código da sala</label>
           <div class="field-row">
             <div><input id="room" maxlength="40" autocomplete="off" spellcheck="false" aria-label="Código da sala"></div>
-            <button id="copyRoomButton" class="secondary" type="button" title="Copiar código da sala" aria-label="Copiar código da sala">Copiar</button>
+            <button id="copyRoomButton" class="secondary" type="button" title="Copiar link da sala" aria-label="Copiar link da sala">Copiar link</button>
           </div>
           <label for="displayName" style="margin-top:10px">Seu nome</label>
           <input id="displayName" class="name-input" maxlength="32" autocomplete="nickname" value="Participante">
@@ -224,15 +251,16 @@
 
         <section class="control-block">
           <h2>Conexão</h2>
-          <div class="status-row"><span id="statusDot" class="status-dot" aria-hidden="true"></span><span id="status">Pronto para iniciar.</span></div>
+          <div class="status-row"><span id="statusDot" class="status-dot" aria-hidden="true"></span><span id="status" aria-live="polite">Pronto para iniciar.</span></div>
           <p id="connectionInfo" class="footnote">Mídia segue diretamente entre navegadores; servidor usado para sinalização e chat.</p>
           <div class="small-status" id="connectionMetrics">Aguardando conexão.</div>
+          <p class="footnote">Atalhos: Alt+Shift+M microfone · T teatro · F tela cheia · C controles · Esc sai das ferramentas.</p>
         </section>
 
         <section class="control-block">
           <h2>Voz</h2>
           <div class="voice-actions">
-            <button id="micButton" class="secondary mic-off" type="button" disabled aria-pressed="false">Microfone desligado</button>
+            <button id="micButton" class="secondary mic-off" type="button" disabled aria-pressed="false" title="Alternar microfone (Alt+Shift+M)">Microfone desligado</button>
             <select id="audioInput" aria-label="Dispositivo de entrada de áudio" disabled><option value="">Entrada padrão</option></select>
           </div>
           <p id="micStatus" class="footnote">Ative para solicitar permissão e entrar na conversa por voz.</p>
@@ -247,7 +275,14 @@
           <div class="section-title"><h2>Chat</h2><button id="chatToggle" class="secondary" type="button" aria-expanded="true" aria-label="Minimizar chat">Minimizar</button></div>
           <div id="chatLog" class="chat-log" role="log" aria-live="polite" aria-relevant="additions"></div>
           <form id="chatForm" class="chat-form">
-            <button id="emojiButton" class="secondary" type="button" title="Inserir emoji" aria-label="Inserir emoji">😀</button>
+            <button id="emojiButton" class="secondary" type="button" title="Inserir emoji" aria-label="Inserir emoji" aria-haspopup="true">😀</button>
+            <div id="emojiMenu" class="emoji-menu" hidden>
+              <button type="button" data-emoji="😀">😀</button>
+              <button type="button" data-emoji="😂">😂</button>
+              <button type="button" data-emoji="❤️">❤️</button>
+              <button type="button" data-emoji="👍">👍</button>
+              <button type="button" data-emoji="🎮">🎮</button>
+            </div>
             <input id="chatInput" maxlength="1000" autocomplete="off" placeholder="Mensagem..." aria-label="Mensagem">
             <button type="submit" aria-label="Enviar mensagem">Enviar</button>
           </form>
@@ -260,9 +295,9 @@
           <button id="pointerButton" class="secondary" type="button" aria-pressed="false" title="Ativar ponteiro remoto">Ponteiro</button>
           <button id="drawButton" class="secondary" type="button" aria-pressed="false" title="Desenhar sobre a transmissão">Desenhar</button>
           <button id="clearButton" class="secondary" type="button" title="Limpar marcações">Limpar</button>
-          <button id="controlsButton" class="secondary" type="button" aria-pressed="false" title="Minimizar controles">Controles</button>
-          <button id="theaterButton" class="secondary" type="button" aria-pressed="false" title="Modo teatro">Teatro</button>
-          <button id="fullscreenButton" class="secondary" type="button" title="Tela cheia">Tela cheia</button>
+          <button id="controlsButton" class="secondary" type="button" aria-pressed="false" title="Minimizar controles (Alt+Shift+C)">Controles</button>
+          <button id="theaterButton" class="secondary" type="button" aria-pressed="false" title="Modo teatro (Alt+Shift+T)">Teatro</button>
+          <button id="fullscreenButton" class="secondary" type="button" title="Tela cheia (Alt+Shift+F)">Tela cheia</button>
         </div>
       <div id="stageShell" class="stage-shell">
         <div id="emptyState" class="empty"><strong>A transmissão aparecerá aqui</strong>Crie uma sala ou informe o código enviado pelo transmissor.</div>
@@ -327,6 +362,7 @@
     let theaterEnabled = false;
     let lastPointerSent = 0;
     let toastTimer;
+    let unreadChat = 0;
 
     const rtcConfig = {
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
@@ -334,6 +370,11 @@
     };
 
     roomInput.value = crypto.randomUUID().replaceAll('-', '').slice(0, 10).toUpperCase();
+    const linkedRoom = new URLSearchParams(location.search).get('sala');
+    if (linkedRoom && /^[a-zA-Z0-9_-]{4,40}$/.test(linkedRoom)) {
+      roomInput.value = linkedRoom.toUpperCase();
+      setStatus('Código carregado do link. Clique em Assistir para entrar.');
+    }
     const storedName = localStorage.getItem('minhatela-name');
     if (storedName) displayNameInput.value = storedName;
 
@@ -409,10 +450,10 @@
           const listen = document.createElement('button');
           listen.type = 'button';
           listen.className = 'secondary listen-button';
-          listen.textContent = audio?.srcObject ? 'Ouvir' : 'Sem voz';
+          listen.textContent = audio?.srcObject ? (peer.listening ? 'Ouvindo' : 'Ouvir') : 'Sem voz';
           listen.disabled = !audio?.srcObject;
           listen.setAttribute('aria-label', `Ativar áudio de ${participant.name}`);
-          listen.addEventListener('click', () => audio?.play().then(() => { listen.textContent = 'Ouvindo'; }).catch(() => showToast('Áudio ainda não disponível.')));
+          listen.addEventListener('click', () => audio?.play().then(() => { peer.listening = true; listen.textContent = 'Ouvindo'; }).catch(() => showToast('Áudio ainda não disponível.')));
           row.append(listen);
           const volume = document.createElement('input');
           volume.className = 'volume-control';
@@ -509,6 +550,7 @@
         analyser: null,
         audioSource: null,
         speakingTimer: null,
+        listening: false,
         videoSender: null
       };
       state.audioElement.autoplay = true;
@@ -660,8 +702,8 @@
         return;
       }
 
-      if (message.type === 'chat' && typeof message.text === 'string' && message.text.length <= 1000 && typeof message.name === 'string') {
-        appendChatMessage(message);
+      if (message.type === 'chat' && typeof message.text === 'string' && message.text.length <= 1000 && typeof message.name === 'string' && typeof message.from === 'string') {
+        appendChatMessage(message, message.from === localPeerId);
         return;
       }
 
@@ -732,6 +774,7 @@
             $('#micButton').disabled = false;
             $('#audioInput').disabled = false;
             roomInput.disabled = true;
+            displayNameInput.disabled = true;
             shareButton.disabled = true;
             watchButton.disabled = true;
             stopButton.disabled = false;
@@ -836,9 +879,14 @@
       return createSocketConnection();
     }
 
-    function appendChatMessage(message) {
+    function appendChatMessage(message, own = false) {
+      if (chatBlock.classList.contains('collapsed')) {
+        unreadChat += 1;
+        $('#chatToggle').textContent = `Expandir (${unreadChat})`;
+      }
       const article = document.createElement('article');
       article.className = 'chat-message';
+      if (own) article.classList.add('own');
       const header = document.createElement('header');
       const name = document.createElement('strong');
       name.textContent = message.name.slice(0, 32);
@@ -1065,6 +1113,7 @@
       clearTimeout(reconnectTimer);
       clearInterval(metricsTimer);
       clearTimeout(toastTimer);
+      $('#toast').hidden = true;
       if (socket && socket.readyState < WebSocket.CLOSING) socket.close(1000, 'Sessão encerrada');
       closeAllPeers();
       if (microphoneStream) for (const track of microphoneStream.getTracks()) track.stop();
@@ -1084,6 +1133,7 @@
       participants.clear();
       localMuted = true;
       roomInput.disabled = false;
+      displayNameInput.disabled = false;
       shareButton.disabled = false;
       watchButton.disabled = false;
       micButton.disabled = true;
@@ -1159,22 +1209,31 @@
       chatInput.value = '';
     });
 
-    $('#emojiButton').addEventListener('click', () => {
-      const emoji = ['😀', '😂', '❤️', '👍', '🎮'][Math.floor(Math.random() * 5)];
-      const start = chatInput.selectionStart;
-      const end = chatInput.selectionEnd;
-      chatInput.setRangeText(emoji, start, end, 'end');
+    const emojiMenu = $('#emojiMenu');
+    $('#emojiButton').addEventListener('click', () => { emojiMenu.hidden = !emojiMenu.hidden; });
+    emojiMenu.addEventListener('click', (event) => {
+      const emoji = event.target.closest('button')?.dataset.emoji;
+      if (!emoji) return;
+      chatInput.setRangeText(emoji, chatInput.selectionStart, chatInput.selectionEnd, 'end');
       chatInput.focus();
+      emojiMenu.hidden = true;
+    });
+    document.addEventListener('click', (event) => {
+      if (!emojiMenu.hidden && !emojiMenu.contains(event.target) && !event.target.closest('#emojiButton')) emojiMenu.hidden = true;
     });
 
     $('#chatToggle').addEventListener('click', (event) => {
       const collapsed = chatBlock.classList.toggle('collapsed');
-      event.currentTarget.textContent = collapsed ? 'Expandir' : 'Minimizar';
+      if (!collapsed) unreadChat = 0;
+      event.currentTarget.textContent = collapsed ? `Expandir${unreadChat ? ` (${unreadChat})` : ''}` : 'Minimizar';
       event.currentTarget.setAttribute('aria-expanded', String(!collapsed));
       event.currentTarget.setAttribute('aria-label', collapsed ? 'Expandir chat' : 'Minimizar chat');
     });
 
-    $('#copyRoomButton').addEventListener('click', () => copyText(roomInput.value.trim()));
+    $('#copyRoomButton').addEventListener('click', () => {
+      const room = roomInput.value.trim();
+      copyText(room ? `${location.origin}${location.pathname}?sala=${encodeURIComponent(room)}` : room);
+    });
     $('#pointerButton').addEventListener('click', () => setTools(!pointerEnabled, false));
     $('#drawButton').addEventListener('click', () => setTools(false, !drawEnabled));
     $('#clearButton').addEventListener('click', () => {
