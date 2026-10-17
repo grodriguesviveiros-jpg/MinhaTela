@@ -1,0 +1,1233 @@
+'use strict';
+
+const $ = (selector) => document.querySelector(selector);
+const roomInput = $('#room');
+const displayNameInput = $('#displayName');
+const shareButton = $('#shareButton');
+const watchButton = $('#watchButton');
+const stopButton = $('#stopButton');
+const stopLabel = $('#stopLabel');
+const micButton = $('#micButton');
+const audioInput = $('#audioInput');
+const cameraButton = $('#cameraButton');
+const videoInput = $('#videoInput');
+const cameraStrip = $('#cameraStrip');
+const statusText = $('#status');
+const statusDot = $('#statusDot');
+const lobby = $('#lobby');
+const meeting = $('#meeting');
+const lobbyInitial = $('#lobbyInitial');
+const lobbyName = $('#lobbyName');
+const roomPill = $('#roomPill');
+const roomPillCode = $('#roomPillCode');
+const sidePanel = $('#sidePanel');
+const video = $('#video');
+const emptyState = $('#emptyState');
+const stageShell = $('#stageShell');
+const annotationCanvas = $('#annotationCanvas');
+const annotationContext = annotationCanvas.getContext('2d');
+const remotePointer = $('#remotePointer');
+const participantList = $('#participantList');
+const participantCount = $('#participantCount');
+const chatLog = $('#chatLog');
+const chatInput = $('#chatInput');
+const peers = new Map();
+const participants = new Map();
+const remoteCameras = new Map();
+let socket;
+let localStream;
+let microphoneStream;
+let cameraStream;
+let currentRole;
+let roomCode;
+let localPeerId;
+let localMuted = true;
+let cameraEnabled = false;
+let shouldReconnect = false;
+let intentionalClose = false;
+let reconnectAttempt = 0;
+let reconnectTimer;
+let socketGeneration = 0;
+let metricsTimer;
+let audioContext;
+const localAudioMonitor = {};
+let drawing = false;
+let drawPoints = [];
+let pointerEnabled = false;
+let drawEnabled = false;
+let controlsHidden = false;
+let theaterEnabled = false;
+let panelOpen = false;
+let panelTab = 'people';
+let lastPointerSent = 0;
+let toastTimer;
+
+const rtcConfig = {
+  iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+  bundlePolicy: 'max-bundle'
+};
+
+roomInput.value = crypto.randomUUID().replaceAll('-', '').slice(0, 10).toUpperCase();
+const storedName = localStorage.getItem('minhatela-name');
+if (storedName) displayNameInput.value = storedName;
+
+function setStatus(message, state = '') {
+  statusText.textContent = message;
+  statusDot.className = `status-dot ${state}`;
+  const lobbyStatus = $('#lobbyStatus');
+  if (lobbyStatus) lobbyStatus.textContent = message;
+}
+
+function showToast(message) {
+  const toast = $('#toast');
+  toast.textContent = message;
+  toast.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toast.hidden = true; }, 2300);
+}
+
+function validRoom() {
+  const room = roomInput.value.trim();
+  if (!/^[a-zA-Z0-9_-]{4,40}$/.test(room)) {
+    setStatus('Use um código de 4 a 40 letras, números, hífen ou sublinhado.', 'error');
+    return null;
+  }
+  return room;
+}
+
+function sendSignal(message) {
+  if (socket?.readyState !== WebSocket.OPEN) return false;
+  socket.send(JSON.stringify(message));
+  return true;
+}
+
+function setMediaStatus(text) {
+  $('#stageBadge').textContent = text;
+}
+
+function setView(inMeeting) {
+  lobby.hidden = inMeeting;
+  meeting.hidden = !inMeeting;
+  requestAnimationFrame(resizeCanvas);
+}
+
+function setPanel(open, tab = panelTab) {
+  panelOpen = open;
+  if (open) panelTab = tab;
+  sidePanel.hidden = !open;
+  $('#chatButton').classList.toggle('panel-on', open && panelTab === 'chat');
+  $('#peopleButton').classList.toggle('panel-on', open && panelTab === 'people');
+  if (open) {
+    $('#peoplePane').hidden = panelTab !== 'people';
+    $('#chatPane').hidden = panelTab !== 'chat';
+    $('#peopleTab').classList.toggle('active', panelTab === 'people');
+    $('#chatTab').classList.toggle('active', panelTab === 'chat');
+  }
+  requestAnimationFrame(resizeCanvas);
+}
+
+function updateLobbyIdentity() {
+  const name = displayNameInput.value.trim() || 'Participante';
+  lobbyName.textContent = name;
+  lobbyInitial.textContent = (name.charAt(0) || 'P').toUpperCase();
+}
+
+function updateLocalParticipant() {
+  participants.set(localPeerId, {
+    peerId: localPeerId,
+    name: displayNameInput.value.trim() || 'Participante',
+    role: currentRole,
+    muted: localMuted,
+    camera: cameraEnabled,
+    local: true
+  });
+  renderParticipants();
+}
+
+function renderParticipants() {
+  const entries = [...participants.values()];
+  participantCount.textContent = String(entries.length);
+  participantList.replaceChildren();
+
+  for (const participant of entries) {
+    const row = document.createElement('li');
+    row.className = 'participant';
+    row.dataset.peerId = participant.peerId;
+    const dot = document.createElement('span');
+    dot.className = `participant-dot${participant.localMuted || participant.muted ? ' offline' : ''}`;
+    dot.dataset.speakingDot = 'true';
+    const name = document.createElement('span');
+    name.className = 'participant-name';
+    name.textContent = participant.local ? `${participant.name} (você)` : participant.name;
+    const meta = document.createElement('span');
+    meta.className = 'participant-meta';
+    const roleText = participant.role === 'host' ? 'Transmitindo' : 'Espectador';
+    const micText = participant.muted ? ' · Mic desligado' : ' · Mic ligado';
+    const camText = participant.camera ? ' · Câmera' : '';
+    meta.textContent = `${roleText}${micText}${camText}`;
+    row.append(dot, name, meta);
+
+    if (!participant.local) {
+      const peer = peers.get(participant.peerId);
+      const audio = peer?.audioElement;
+      if (audio) row.append(audio);
+      const listen = document.createElement('button');
+      listen.type = 'button';
+      listen.className = 'listen-button';
+      listen.textContent = audio?.srcObject ? 'Ouvir' : 'Sem voz';
+      listen.disabled = !audio?.srcObject;
+      listen.setAttribute('aria-label', `Ativar áudio de ${participant.name}`);
+      listen.addEventListener('click', () => audio?.play().then(() => { listen.textContent = 'Ouvindo'; }).catch(() => showToast('Áudio ainda não disponível.')));
+      row.append(listen);
+      const volume = document.createElement('input');
+      volume.className = 'volume-control';
+      volume.type = 'range';
+      volume.min = '0';
+      volume.max = '1';
+      volume.step = '0.05';
+      volume.value = String(audio?.volume ?? 1);
+      volume.setAttribute('aria-label', `Volume de ${participant.name}`);
+      volume.addEventListener('input', () => { if (audio) audio.volume = Number(volume.value); });
+      row.append(volume);
+    }
+    participantList.append(row);
+  }
+}
+
+function updateParticipant(peerId, changes) {
+  const participant = participants.get(peerId);
+  if (!participant) return;
+  Object.assign(participant, changes);
+  renderParticipants();
+}
+
+function setParticipantSpeaking(peerId, speaking) {
+  for (const dot of participantList.querySelectorAll('[data-speaking-dot]')) {
+    if (dot.parentElement.dataset.peerId === peerId) dot.classList.toggle('speaking', speaking);
+  }
+}
+
+function validPeerDescriptor(peer) {
+  return peer && typeof peer.peerId === 'string' && peer.peerId.length <= 64 &&
+    typeof peer.name === 'string' && ['host', 'viewer'].includes(peer.role);
+}
+
+function registerPeer(peer) {
+  if (!validPeerDescriptor(peer) || peer.peerId === localPeerId) return;
+  const existing = participants.get(peer.peerId);
+  participants.set(peer.peerId, {
+    peerId: peer.peerId,
+    name: peer.name.slice(0, 32),
+    role: peer.role,
+    muted: typeof peer.muted === 'boolean' ? peer.muted : existing?.muted ?? true,
+    camera: typeof peer.camera === 'boolean' ? peer.camera : existing?.camera ?? false
+  });
+  renderParticipants();
+}
+
+function closePeer(peerId) {
+  removeRemoteCamera(peerId);
+  const state = peers.get(peerId);
+  if (state) {
+    clearInterval(state.speakingTimer);
+    state.audioElement?.pause();
+    if (state.audioElement) state.audioElement.srcObject = null;
+    state.audioSource?.disconnect();
+    state.pc.close();
+    peers.delete(peerId);
+  }
+  const departed = participants.get(peerId);
+  participants.delete(peerId);
+  renderParticipants();
+  if (departed?.role === 'host' && currentRole === 'viewer') {
+    video.srcObject = null;
+    video.hidden = true;
+    emptyState.hidden = false;
+    setMediaStatus('Transmissor desconectado');
+    setStatus('O transmissor saiu; aguardando uma possível reconexão.', 'error');
+  }
+}
+
+function closeAllPeers() {
+  for (const peerId of [...peers.keys()]) closePeer(peerId);
+  participants.clear();
+  if (localPeerId) updateLocalParticipant();
+}
+
+function isOfferer(peerId) {
+  const peer = participants.get(peerId);
+  if (currentRole === 'host' && peer?.role === 'viewer') return true;
+  if (currentRole === 'viewer' && peer?.role === 'host') return false;
+  return Boolean(localPeerId && localPeerId < peerId);
+}
+
+function createPeer(peerId) {
+  if (peers.has(peerId)) return peers.get(peerId);
+  const pc = new RTCPeerConnection(rtcConfig);
+  const audioTransceiver = pc.addTransceiver('audio', { direction: 'sendrecv' });
+  const cameraTransceiver = pc.addTransceiver('video', { direction: currentRole === 'host' ? 'sendrecv' : 'recvonly' });
+  const state = {
+    pc,
+    audioSender: audioTransceiver.sender,
+    cameraSender: cameraTransceiver.sender,
+    pendingCandidates: [],
+    makingOffer: false,
+    offerSent: false,
+    restarts: 0,
+    audioElement: new Audio(),
+    analyser: null,
+    audioSource: null,
+    speakingTimer: null,
+    videoSender: null
+  };
+  state.audioElement.autoplay = true;
+  state.audioElement.playsInline = true;
+  state.audioElement.volume = 1;
+  peers.set(peerId, state);
+
+  if (currentRole === 'host' && localStream) {
+    for (const track of localStream.getVideoTracks()) state.videoSender = pc.addTrack(track, localStream);
+  }
+  const cameraTrack = cameraStream?.getVideoTracks()[0];
+  if (cameraTrack) state.cameraSender.replaceTrack(cameraTrack).catch(console.error);
+  if (microphoneStream?.getAudioTracks()[0]) {
+    state.audioSender.replaceTrack(microphoneStream.getAudioTracks()[0]).catch(console.error);
+  }
+
+  pc.onicecandidate = ({ candidate }) => {
+    if (candidate) sendSignal({ type: 'candidate', target: peerId, candidate });
+  };
+
+  pc.ontrack = ({ track, transceiver }) => {
+    if (track.kind === 'video') {
+      if (transceiver?.mid === '1') {
+        storeRemoteCameraTrack(peerId, track);
+        return;
+      }
+      if (currentRole === 'viewer') {
+        video.srcObject = new MediaStream([track]);
+        video.muted = false;
+        video.hidden = false;
+        emptyState.hidden = true;
+        video.play().catch(() => showToast('Clique no player para iniciar a transmissão.'));
+        setMediaStatus('Recebendo tela');
+      }
+      return;
+    }
+
+    if (track.kind === 'audio') {
+      const remoteStream = new MediaStream([track]);
+      state.audioElement.srcObject = remoteStream;
+      state.audioElement.play().catch(() => showToast('Interaja com a página para liberar o áudio da voz.'));
+      createSpeakingMeter(peerId, state, remoteStream);
+      track.addEventListener('ended', () => setParticipantSpeaking(peerId, false), { once: true });
+      renderParticipants();
+    }
+  };
+
+  pc.onconnectionstatechange = () => {
+    if (pc.connectionState === 'connected') {
+      $('#connectionMetrics').textContent = 'P2P conectado';
+    } else if (pc.connectionState === 'failed') {
+      restartPeer(peerId, state);
+    } else if (pc.connectionState === 'disconnected') {
+      $('#connectionMetrics').textContent = 'Conexão instável; tentando recuperar...';
+    }
+  };
+
+  return state;
+}
+
+async function createSpeakingMeter(peerId, state, stream) {
+  try {
+    audioContext ||= new AudioContext();
+    if (audioContext.state === 'suspended') await audioContext.resume();
+    state.audioSource?.disconnect();
+    state.audioSource = audioContext.createMediaStreamSource(stream);
+    state.analyser = audioContext.createAnalyser();
+    state.analyser.fftSize = 256;
+    state.audioSource.connect(state.analyser);
+    const samples = new Uint8Array(state.analyser.fftSize);
+    clearInterval(state.speakingTimer);
+    state.speakingTimer = setInterval(() => {
+      if (!state.analyser || (peerId !== localPeerId && !peers.has(peerId))) return;
+      if (peerId === localPeerId && localMuted) { setParticipantSpeaking(peerId, false); return; }
+      state.analyser.getByteTimeDomainData(samples);
+      let power = 0;
+      for (const sample of samples) power += (sample - 128) ** 2;
+      setParticipantSpeaking(peerId, Math.sqrt(power / samples.length) > 5.5);
+    }, 180);
+  } catch (error) {
+    console.warn('Indicador de voz indisponível:', error);
+  }
+}
+
+async function initiatePeer(peerId, state) {
+  if (state.offerSent || state.makingOffer || !isOfferer(peerId)) return;
+  state.makingOffer = true;
+  try {
+    const offer = await state.pc.createOffer();
+    await state.pc.setLocalDescription(offer);
+    sendSignal({ type: 'offer', target: peerId, sdp: state.pc.localDescription });
+    state.offerSent = true;
+  } finally {
+    state.makingOffer = false;
+  }
+}
+
+async function flushCandidates(state) {
+  for (const candidate of state.pendingCandidates) await state.pc.addIceCandidate(candidate);
+  state.pendingCandidates.length = 0;
+}
+
+async function restartPeer(peerId, state) {
+  if (!isOfferer(peerId) || state.restarts >= 2 || intentionalClose) {
+    $('#connectionMetrics').textContent = 'P2P indisponível; confira a rede ou a necessidade de TURN.';
+    return;
+  }
+  state.restarts += 1;
+  state.offerSent = false;
+  try {
+    state.pc.restartIce();
+    const offer = await state.pc.createOffer({ iceRestart: true });
+    await state.pc.setLocalDescription(offer);
+    sendSignal({ type: 'offer', target: peerId, sdp: state.pc.localDescription });
+    state.offerSent = true;
+  } catch (error) {
+    console.warn('Falha ao reiniciar ICE:', error);
+  }
+}
+
+async function handleSignal(message) {
+  if (message.type === 'peer-joined') {
+    if (!validPeerDescriptor(message.peer)) return;
+    registerPeer(message.peer);
+    const state = createPeer(message.peer.peerId);
+    if (isOfferer(message.peer.peerId)) await initiatePeer(message.peer.peerId, state);
+    return;
+  }
+
+  if (message.type === 'offer' && typeof message.from === 'string' && message.sdp?.type === 'offer') {
+    let state = peers.get(message.from);
+    if (!state) state = createPeer(message.from);
+    await state.pc.setRemoteDescription(message.sdp);
+    await flushCandidates(state);
+    const answer = await state.pc.createAnswer();
+    await state.pc.setLocalDescription(answer);
+    sendSignal({ type: 'answer', target: message.from, sdp: state.pc.localDescription });
+    return;
+  }
+
+  if (message.type === 'answer' && typeof message.from === 'string' && message.sdp?.type === 'answer') {
+    const state = peers.get(message.from);
+    if (!state) return;
+    await state.pc.setRemoteDescription(message.sdp);
+    await flushCandidates(state);
+    return;
+  }
+
+  if (message.type === 'candidate' && typeof message.from === 'string') {
+    const state = peers.get(message.from);
+    if (!state) return;
+    if (state.pc.remoteDescription) await state.pc.addIceCandidate(message.candidate);
+    else state.pendingCandidates.push(message.candidate);
+    return;
+  }
+
+  if (message.type === 'chat' && typeof message.text === 'string' && message.text.length <= 1000 && typeof message.name === 'string') {
+    appendChatMessage(message);
+    return;
+  }
+
+  if (message.type === 'peer-state' && typeof message.peerId === 'string' && typeof message.muted === 'boolean') {
+    const changes = { muted: message.muted };
+    if (typeof message.camera === 'boolean') changes.camera = message.camera;
+    updateParticipant(message.peerId, changes);
+    if (message.muted) setParticipantSpeaking(message.peerId, false);
+    if (changes.camera === true) ensureRemoteCameraTile(message.peerId);
+    if (changes.camera === false) removeRemoteCameraTile(message.peerId);
+    return;
+  }
+
+  if (message.type === 'peer-left' && typeof message.peerId === 'string') {
+    closePeer(message.peerId);
+    if (participants.size <= 1) $('#connectionMetrics').textContent = 'Aguardando participantes.';
+    return;
+  }
+
+  if (message.type === 'pointer' && message.point && Number.isFinite(message.point.x) && Number.isFinite(message.point.y)) {
+    remotePointer.style.left = `${Math.max(0, Math.min(1, message.point.x)) * 100}%`;
+    remotePointer.style.top = `${Math.max(0, Math.min(1, message.point.y)) * 100}%`;
+    remotePointer.classList.toggle('active', message.active === true);
+    return;
+  }
+
+  if (message.type === 'draw' && Array.isArray(message.points) && message.points.length <= 80 && /^#[0-9a-fA-F]{6}$/.test(message.color)) {
+    drawStroke(message.points, message.color);
+    return;
+  }
+
+  if (message.type === 'clear-draw') clearCanvas();
+}
+
+function createSocketConnection(reconnecting = false) {
+  return new Promise((resolve, reject) => {
+    const generation = ++socketGeneration;
+    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const nextSocket = new WebSocket(`${protocol}//${location.host}/signal`);
+    socket = nextSocket;
+    let settled = false;
+    const timeout = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        nextSocket.close();
+        reject(new Error('Tempo esgotado ao conectar ao servidor de sinalização.'));
+      }
+    }, 10000);
+
+    nextSocket.addEventListener('open', () => {
+      if (generation !== socketGeneration) return;
+      nextSocket.send(JSON.stringify({
+        type: 'join',
+        role: currentRole,
+        room: roomCode,
+        name: displayNameInput.value.trim().slice(0, 32) || 'Participante',
+        muted: localMuted,
+        camera: cameraEnabled
+      }));
+    });
+
+    nextSocket.addEventListener('message', async (event) => {
+      if (generation !== socketGeneration) return;
+      let message;
+      try { message = JSON.parse(event.data); }
+      catch { setStatus('O servidor enviou uma mensagem inválida.', 'error'); return; }
+
+      if (!message || typeof message !== 'object') return;
+      if (message.type === 'joined') {
+        clearTimeout(timeout);
+        settled = true;
+        localPeerId = message.peerId;
+        micButton.disabled = false;
+        audioInput.disabled = false;
+        videoInput.disabled = currentRole !== 'host';
+        cameraButton.style.display = currentRole === 'host' ? '' : 'none';
+        roomInput.disabled = true;
+        shareButton.disabled = true;
+        watchButton.disabled = true;
+        stopButton.disabled = false;
+        roomPill.hidden = false;
+        roomPillCode.textContent = roomCode;
+        setView(true);
+        if (window.innerWidth > 720) setPanel(true, 'people');
+        participants.clear();
+        for (const peer of Array.isArray(message.peers) ? message.peers : []) registerPeer(peer);
+        updateLocalParticipant();
+        for (const peer of participants.values()) {
+          if (peer.local) continue;
+          const state = createPeer(peer.peerId);
+          if (isOfferer(peer.peerId)) await initiatePeer(peer.peerId, state);
+        }
+        refreshAudioInputs();
+        refreshVideoInputs();
+        reconnectAttempt = 0;
+        shouldReconnect = true;
+        const hasDisplayAudio = localStream?.getAudioTracks().some((track) => track.readyState === 'live');
+        const connectedStatus = currentRole !== 'host'
+          ? (reconnecting ? 'Reconectado à sala.' : 'Na sala; aguardando a transmissão.')
+          : hasDisplayAudio
+            ? 'Tela compartilhada com áudio de captura; aguardando amigos.'
+            : 'Tela compartilhada sem áudio de sistema. Firefox não captura esse áudio; tente Chrome/Edge.';
+        setStatus(connectedStatus, 'live');
+        $('#connectionMetrics').textContent = `${participants.size} participante(s) · P2P conectando`;
+        if (currentRole === 'host') setMediaStatus('Tela compartilhada');
+        else setMediaStatus('Aguardando transmissão');
+        startMetrics();
+        resolve();
+        return;
+      }
+
+      if (message.type === 'error') {
+        if (!settled) {
+          clearTimeout(timeout);
+          settled = true;
+          reject(new Error(message.message || 'Não foi possível entrar na sala.'));
+        } else {
+          showToast(message.message || 'Erro na sala.');
+        }
+        return;
+      }
+
+      try { await handleSignal(message); }
+      catch (error) {
+        console.error(error);
+        $('#connectionMetrics').textContent = `Falha WebRTC: ${error.message}`;
+      }
+    });
+
+    nextSocket.addEventListener('close', () => {
+      clearTimeout(timeout);
+      if (generation !== socketGeneration) return;
+      if (!settled) {
+        settled = true;
+        reject(new Error('Conexão com o servidor de sinalização encerrada.'));
+      }
+      if (shouldReconnect && !intentionalClose) scheduleReconnect();
+    });
+
+    nextSocket.addEventListener('error', () => {
+      if (!settled) {
+        clearTimeout(timeout);
+        settled = true;
+        reject(new Error('Não foi possível conectar ao servidor. Verifique a rede e tente novamente.'));
+      }
+    });
+  });
+}
+
+function scheduleReconnect() {
+  if (reconnectTimer || intentionalClose) return;
+  if (reconnectAttempt >= 8) {
+    shouldReconnect = false;
+    setStatus('Desconectado. Use Retomar para entrar novamente na mesma sala.', 'error');
+    stopLabel.textContent = 'Retomar sessão';
+    stopButton.disabled = false;
+    $('#connectionMetrics').textContent = 'Reconexão automática esgotada.';
+    return;
+  }
+  const delay = Math.min(1000 * (2 ** reconnectAttempt), 20000);
+  reconnectAttempt += 1;
+  setStatus(`Conexão perdida; tentando novamente em ${Math.ceil(delay / 1000)} s...`, 'error');
+  $('#connectionMetrics').textContent = 'Reconectando ao servidor de sinalização...';
+  closeAllPeers();
+  reconnectTimer = setTimeout(async () => {
+    reconnectTimer = null;
+    if (intentionalClose || !roomCode) return;
+    try { await createSocketConnection(true); }
+    catch (error) {
+      console.warn(error);
+      scheduleReconnect();
+    }
+  }, delay);
+}
+
+async function connect(role, room) {
+  currentRole = role;
+  roomCode = room;
+  shouldReconnect = true;
+  intentionalClose = false;
+  reconnectAttempt = 0;
+  setStatus('Conectando à sala...');
+  return createSocketConnection();
+}
+
+function appendChatMessage(message) {
+  const article = document.createElement('article');
+  article.className = 'chat-message';
+  const header = document.createElement('header');
+  const name = document.createElement('strong');
+  name.textContent = message.name.slice(0, 32);
+  const time = document.createElement('time');
+  time.dateTime = new Date(message.timestamp).toISOString();
+  time.textContent = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(message.timestamp);
+  const copy = document.createElement('button');
+  copy.type = 'button';
+  copy.textContent = 'Copiar';
+  copy.setAttribute('aria-label', 'Copiar mensagem');
+  copy.addEventListener('click', () => copyText(message.text));
+  const body = document.createElement('p');
+  body.textContent = message.text;
+  header.append(name, time, copy);
+  article.append(header, body);
+  chatLog.append(article);
+  while (chatLog.children.length > 150) chatLog.firstElementChild.remove();
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+async function copyText(value) {
+  try {
+    await navigator.clipboard.writeText(value);
+    showToast('Copiado.');
+  } catch {
+    const temporary = document.createElement('textarea');
+    temporary.value = value;
+    temporary.style.position = 'fixed';
+    temporary.style.opacity = '0';
+    document.body.append(temporary);
+    temporary.select();
+    document.execCommand('copy');
+    temporary.remove();
+    showToast('Copiado.');
+  }
+}
+
+async function refreshAudioInputs() {
+  if (!navigator.mediaDevices?.enumerateDevices) return;
+  try {
+    const selected = audioInput.value;
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const inputs = devices.filter((device) => device.kind === 'audioinput');
+    audioInput.replaceChildren();
+    for (const [index, device] of inputs.entries()) {
+      const option = document.createElement('option');
+      option.value = device.deviceId;
+      option.textContent = device.label || `Microfone ${index + 1}`;
+      audioInput.append(option);
+    }
+    if (!inputs.length) {
+      const option = document.createElement('option');
+      option.value = '';
+      option.textContent = 'Nenhum microfone encontrado';
+      audioInput.append(option);
+    } else if (inputs.some((device) => device.deviceId === selected)) {
+      audioInput.value = selected;
+    }
+  } catch (error) {
+    console.warn('Não foi possível listar microfones:', error);
+  }
+}
+
+async function acquireMicrophone() {
+  if (!navigator.mediaDevices?.getUserMedia) throw new Error('Este navegador não permite acesso ao microfone nesta origem. Use HTTPS.');
+  const audio = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+  if (audioInput.value) audio.deviceId = { exact: audioInput.value };
+  try {
+    microphoneStream = await navigator.mediaDevices.getUserMedia({ audio, video: false });
+  } catch (error) {
+    if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') throw new Error('Permissão de microfone negada. Autorize o microfone nas configurações do navegador.');
+    if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') throw new Error('Nenhum microfone foi encontrado. Conecte um dispositivo e tente novamente.');
+    throw error;
+  }
+  const track = microphoneStream.getAudioTracks()[0];
+  if (!track) throw new Error('O navegador não retornou uma faixa de microfone.');
+  track.enabled = true;
+  track.addEventListener('ended', () => setMicrophoneEnabled(false), { once: true });
+  await refreshAudioInputs();
+  if (audioContext?.state === 'suspended') await audioContext.resume();
+  return track;
+}
+
+async function setMicrophoneEnabled(enabled) {
+  if (enabled && !microphoneStream) {
+    micButton.disabled = true;
+    setStatus('Solicitando permissão para o microfone...');
+    try { await acquireMicrophone(); }
+    catch (error) {
+      setStatus(error.message, 'error');
+      showToast(error.message);
+      micButton.disabled = !currentRole;
+      return;
+    }
+  }
+  localMuted = !enabled;
+  for (const track of microphoneStream?.getAudioTracks() || []) track.enabled = enabled;
+  await Promise.all([...peers.values()].map((state) => state.audioSender.replaceTrack(enabled ? microphoneStream?.getAudioTracks()[0] || null : null).catch((error) => console.warn('Falha ao alternar microfone:', error))));
+  if (enabled) await createSpeakingMeter(localPeerId, localAudioMonitor, microphoneStream);
+  else {
+    clearInterval(localAudioMonitor.speakingTimer);
+    setParticipantSpeaking(localPeerId, false);
+  }
+  micButton.classList.toggle('off', !enabled);
+  micButton.setAttribute('aria-pressed', String(enabled));
+  micButton.setAttribute('aria-label', enabled ? 'Desligar microfone' : 'Ligar microfone');
+  setStatus(enabled ? 'Microfone ativo nesta sala.' : 'Microfone desligado.');
+  updateLocalParticipant();
+  sendSignal({ type: 'state', muted: localMuted, camera: cameraEnabled });
+}
+
+async function replaceMicrophone() {
+  if (!microphoneStream || localMuted) return;
+  try {
+    const oldStream = microphoneStream;
+    await acquireMicrophone();
+    const nextTrack = microphoneStream.getAudioTracks()[0];
+    await Promise.all([...peers.values()].map((state) => state.audioSender.replaceTrack(nextTrack)));
+    for (const track of oldStream.getTracks()) track.stop();
+    if (!localMuted) await createSpeakingMeter(localPeerId, localAudioMonitor, microphoneStream);
+  } catch (error) {
+    setStatus(error.message, 'error');
+    showToast(error.message);
+  }
+}
+
+async function refreshVideoInputs() {
+  if (!navigator.mediaDevices?.enumerateDevices) return;
+  try {
+    const selected = videoInput.value;
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const inputs = devices.filter((device) => device.kind === 'videoinput');
+    videoInput.replaceChildren();
+    for (const [index, device] of inputs.entries()) {
+      const option = document.createElement('option');
+      option.value = device.deviceId;
+      option.textContent = device.label || `Câmera ${index + 1}`;
+      videoInput.append(option);
+    }
+    if (!inputs.length) {
+      const option = document.createElement('option');
+      option.value = '';
+      option.textContent = 'Nenhuma câmera encontrada';
+      videoInput.append(option);
+    } else if (inputs.some((device) => device.deviceId === selected)) {
+      videoInput.value = selected;
+    }
+  } catch (error) {
+    console.warn('Não foi possível listar câmeras:', error);
+  }
+}
+
+async function acquireCamera() {
+  if (!navigator.mediaDevices?.getUserMedia) throw new Error('Este navegador não permite acesso à câmera nesta origem. Use HTTPS.');
+  const video = { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' };
+  if (videoInput.value) { video.deviceId = { exact: videoInput.value }; delete video.facingMode; }
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video, audio: false });
+  } catch (error) {
+    if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') throw new Error('Permissão de câmera negada. Autorize a câmera nas configurações do navegador.');
+    if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') throw new Error('Nenhuma câmera foi encontrada. Conecte um dispositivo e tente novamente.');
+    if (error.name === 'NotReadableError' || error.name === 'TrackStartError') throw new Error('A câmera está em uso por outro aplicativo.');
+    throw error;
+  }
+  const track = cameraStream.getVideoTracks()[0];
+  if (!track) throw new Error('O navegador não retornou uma faixa de câmera.');
+  track.addEventListener('ended', handleCameraTrackEnded, { once: true });
+  await refreshVideoInputs();
+  return track;
+}
+
+function handleCameraTrackEnded() {
+  if (cameraEnabled) setCameraEnabled(false);
+}
+
+async function setCameraEnabled(enabled) {
+  if (cameraEnabled === enabled) return;
+  if (enabled && currentRole !== 'host') {
+    showToast('Somente o transmissor pode compartilhar a câmera.');
+    return;
+  }
+  if (enabled && !cameraStream) {
+    cameraButton.disabled = true;
+    setStatus('Solicitando permissão para a câmera...');
+    try { await acquireCamera(); }
+    catch (error) {
+      setStatus(error.message, 'error');
+      showToast(error.message);
+      cameraButton.disabled = false;
+      return;
+    }
+  }
+  cameraEnabled = enabled;
+  if (!enabled && cameraStream) {
+    for (const track of cameraStream.getTracks()) track.stop();
+    cameraStream = null;
+  }
+  const cameraTrack = cameraStream?.getVideoTracks()[0] || null;
+  await Promise.all([...peers.values()].map((state) => state.cameraSender.replaceTrack(enabled ? cameraTrack : null).catch((error) => console.warn('Falha ao alternar câmera:', error))));
+  renderLocalCameraTile();
+  cameraButton.disabled = false;
+  cameraButton.classList.toggle('off', !enabled);
+  cameraButton.setAttribute('aria-pressed', String(enabled));
+  cameraButton.setAttribute('aria-label', enabled ? 'Desligar câmera' : 'Ligar câmera');
+  setStatus(enabled ? 'Câmera do transmissor ativa.' : 'Câmera desligada.', enabled ? 'live' : '');
+  sendSignal({ type: 'state', muted: localMuted, camera: cameraEnabled });
+  updateLocalParticipant();
+}
+
+async function replaceCamera() {
+  if (!cameraStream || !cameraEnabled) return;
+  try {
+    const oldStream = cameraStream;
+    await acquireCamera();
+    const nextTrack = cameraStream.getVideoTracks()[0];
+    for (const track of oldStream.getVideoTracks()) track.removeEventListener('ended', handleCameraTrackEnded);
+    await Promise.all([...peers.values()].map((state) => state.cameraSender.replaceTrack(nextTrack)));
+    for (const track of oldStream.getTracks()) track.stop();
+    renderLocalCameraTile();
+  } catch (error) {
+    setStatus(error.message, 'error');
+    showToast(error.message);
+  }
+}
+
+function createCameraTile() {
+  const tile = document.createElement('div');
+  tile.className = 'cam-tile';
+  const media = document.createElement('video');
+  media.autoplay = true;
+  media.playsInline = true;
+  media.muted = true;
+  const badge = document.createElement('span');
+  badge.className = 'cam-badge';
+  tile.append(media, badge);
+  return tile;
+}
+
+function renderLocalCameraTile() {
+  const tile = cameraStrip.querySelector('[data-local-camera]');
+  if (!cameraEnabled || !cameraStream) {
+    tile?.remove();
+    return;
+  }
+  const element = tile || createCameraTile();
+  element.dataset.localCamera = 'true';
+  const media = element.querySelector('video');
+  media.classList.add('mirror');
+  if (media.srcObject !== cameraStream) {
+    media.srcObject = cameraStream;
+    media.play().catch(() => {});
+  }
+  element.querySelector('.cam-badge').textContent = `${displayNameInput.value.trim() || 'Participante'} (você)`;
+  if (!tile) cameraStrip.append(element);
+}
+
+function storeRemoteCameraTrack(peerId, track) {
+  const entry = remoteCameras.get(peerId) || { track: null, tile: null, video: null };
+  entry.track = track;
+  remoteCameras.set(peerId, entry);
+  if (participants.get(peerId)?.camera) ensureRemoteCameraTile(peerId);
+}
+
+function ensureRemoteCameraTile(peerId) {
+  const entry = remoteCameras.get(peerId);
+  if (!entry || !entry.track || entry.tile) return;
+  const tile = createCameraTile();
+  tile.dataset.peerId = peerId;
+  tile.querySelector('.cam-badge').textContent = participants.get(peerId)?.name || 'Participante';
+  const media = tile.querySelector('video');
+  media.srcObject = new MediaStream([entry.track]);
+  media.play().catch(() => {});
+  entry.tile = tile;
+  entry.video = media;
+  cameraStrip.append(tile);
+}
+
+function removeRemoteCameraTile(peerId) {
+  const entry = remoteCameras.get(peerId);
+  if (entry?.tile) {
+    entry.tile.remove();
+    entry.tile = null;
+    entry.video = null;
+  }
+}
+
+function removeRemoteCamera(peerId) {
+  removeRemoteCameraTile(peerId);
+  remoteCameras.delete(peerId);
+}
+
+function resizeCanvas() {
+  const bounds = stageShell.getBoundingClientRect();
+  const scale = window.devicePixelRatio || 1;
+  annotationCanvas.width = Math.max(1, Math.round(bounds.width * scale));
+  annotationCanvas.height = Math.max(1, Math.round(bounds.height * scale));
+  annotationContext.setTransform(scale, 0, 0, scale, 0, 0);
+}
+
+function drawStroke(points, color = '#8ab4f8') {
+  if (!Array.isArray(points) || points.length < 2) return;
+  const width = stageShell.clientWidth;
+  const height = stageShell.clientHeight;
+  annotationContext.strokeStyle = color;
+  annotationContext.lineWidth = 3;
+  annotationContext.lineCap = 'round';
+  annotationContext.lineJoin = 'round';
+  annotationContext.beginPath();
+  annotationContext.moveTo(points[0].x * width, points[0].y * height);
+  for (const point of points.slice(1)) annotationContext.lineTo(point.x * width, point.y * height);
+  annotationContext.stroke();
+}
+
+function clearCanvas() {
+  annotationContext.clearRect(0, 0, stageShell.clientWidth, stageShell.clientHeight);
+}
+
+function pointerPoint(event) {
+  const bounds = stageShell.getBoundingClientRect();
+  return {
+    x: Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width)),
+    y: Math.max(0, Math.min(1, (event.clientY - bounds.top) / bounds.height))
+  };
+}
+
+function setTools(pointer, draw) {
+  pointerEnabled = pointer;
+  drawEnabled = draw;
+  $('#pointerButton').setAttribute('aria-pressed', String(pointer));
+  $('#drawButton').setAttribute('aria-pressed', String(draw));
+  $('#pointerButton').classList.toggle('on', pointer);
+  $('#drawButton').classList.toggle('on', draw);
+  annotationCanvas.classList.toggle('active', draw);
+}
+
+async function updateConnectionMetrics() {
+  const results = await Promise.all([...peers.entries()].map(async ([peerId, state]) => {
+    try {
+      const stats = await state.pc.getStats();
+      let rtt = null;
+      let loss = 0;
+      for (const report of stats.values()) {
+        if (report.type === 'candidate-pair' && report.state === 'succeeded' && report.nominated && Number.isFinite(report.currentRoundTripTime)) rtt = report.currentRoundTripTime;
+        if (report.type === 'remote-inbound-rtp' && report.kind === 'video' && report.packetsReceived + report.packetsLost > 0) loss = report.packetsLost / (report.packetsReceived + report.packetsLost);
+      }
+      if (currentRole === 'host' && state.videoSender) {
+        const parameters = state.videoSender.getParameters();
+        if (parameters.encodings?.length) {
+          parameters.encodings[0].maxBitrate = rtt > 0.35 || loss > 0.08 ? 900000 : rtt > 0.18 || loss > 0.03 ? 1600000 : 2500000;
+          await state.videoSender.setParameters(parameters).catch(() => {});
+        }
+      }
+      return { peerId, rtt, loss };
+    } catch { return null; }
+  }));
+  const valid = results.filter((result) => result && result.rtt !== null);
+  if (valid.length) {
+    const average = valid.reduce((sum, result) => sum + result.rtt, 0) / valid.length;
+    const worstLoss = Math.max(...valid.map((result) => result.loss));
+    const quality = average < 0.15 && worstLoss < 0.03 ? 'Boa' : average < 0.35 && worstLoss < 0.08 ? 'Regular' : 'Instável';
+    $('#connectionMetrics').textContent = `${participants.size} participante(s) · RTT ~${Math.round(average * 1000)} ms · ${quality}`;
+  }
+}
+
+function startMetrics() {
+  clearInterval(metricsTimer);
+  metricsTimer = setInterval(updateConnectionMetrics, 5000);
+  updateConnectionMetrics();
+}
+
+function stopSession() {
+  if (currentRole && (!shouldReconnect || stopLabel.textContent === 'Retomar sessão')) {
+    stopLabel.textContent = 'Encerrar';
+    reconnectAttempt = 0;
+    shouldReconnect = true;
+    intentionalClose = false;
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+    setStatus('Retomando conexão à sala...');
+    createSocketConnection(true).catch((error) => {
+      setStatus(error.message, 'error');
+      scheduleReconnect();
+    });
+    return;
+  }
+
+  intentionalClose = true;
+  shouldReconnect = false;
+  ++socketGeneration;
+  clearTimeout(reconnectTimer);
+  clearInterval(metricsTimer);
+  clearTimeout(toastTimer);
+  if (socket && socket.readyState < WebSocket.CLOSING) socket.close(1000, 'Sessão encerrada');
+  closeAllPeers();
+  if (microphoneStream) for (const track of microphoneStream.getTracks()) track.stop();
+  clearInterval(localAudioMonitor.speakingTimer);
+  microphoneStream = null;
+  setCameraEnabled(false);
+  if (localStream) for (const track of localStream.getTracks()) track.stop();
+  localStream = null;
+  if (audioContext) { audioContext.close().catch(() => {}); audioContext = null; }
+  video.srcObject = null;
+  video.muted = false;
+  video.hidden = true;
+  emptyState.hidden = false;
+  roomPill.hidden = true;
+  currentRole = null;
+  roomCode = null;
+  localPeerId = null;
+  participants.clear();
+  localMuted = true;
+  roomInput.disabled = false;
+  shareButton.disabled = false;
+  watchButton.disabled = false;
+  micButton.disabled = true;
+  audioInput.disabled = true;
+  videoInput.disabled = true;
+  stopButton.disabled = true;
+  stopLabel.textContent = 'Encerrar';
+  micButton.classList.add('off');
+  micButton.setAttribute('aria-pressed', 'false');
+  micButton.setAttribute('aria-label', 'Ligar microfone');
+  cameraButton.style.display = '';
+  chatLog.replaceChildren();
+  clearCanvas();
+  setTools(false, false);
+  setMediaStatus('Sem transmissão ativa');
+  setPanel(false);
+  setView(false);
+  theaterEnabled = false;
+  controlsHidden = false;
+  document.body.classList.remove('theater', 'minimal');
+  $('#theaterButton').setAttribute('aria-pressed', 'false');
+  $('#controlsButton').setAttribute('aria-pressed', 'false');
+  $('#connectionMetrics').textContent = 'Aguardando conexão.';
+  setStatus('Sessão encerrada.');
+  renderParticipants();
+}
+
+async function beginSession(role) {
+  const room = validRoom();
+  if (!room) return;
+  localStorage.setItem('minhatela-name', displayNameInput.value.trim().slice(0, 32));
+  shareButton.disabled = true;
+  watchButton.disabled = true;
+  try {
+    if (role === 'host') {
+      if (!navigator.mediaDevices?.getDisplayMedia) throw new Error('Captura não suportada neste navegador. Use Chrome/Edge desktop em HTTPS ou localhost.');
+      setStatus('Selecione a tela ou janela para compartilhar.');
+      localStream = await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: { ideal: 60, max: 60 } },
+        audio: true
+      });
+      const videoTrack = localStream.getVideoTracks()[0];
+      if (!videoTrack) throw new Error('A captura não forneceu uma faixa de vídeo.');
+      videoTrack.addEventListener('ended', stopSession, { once: true });
+      video.srcObject = localStream;
+      video.muted = true;
+      video.hidden = false;
+      emptyState.hidden = true;
+      video.play().catch(() => showToast('A prévia local não pôde iniciar a reprodução.'));
+      setMediaStatus('Prévia da tela ativa');
+    }
+    await connect(role, room);
+  } catch (error) {
+    shouldReconnect = false;
+    intentionalClose = true;
+    if (socket && socket.readyState < WebSocket.CLOSING) socket.close();
+    if (localStream) for (const track of localStream.getTracks()) track.stop();
+    localStream = null;
+    video.srcObject = null;
+    video.hidden = true;
+    emptyState.hidden = false;
+    shareButton.disabled = false;
+    watchButton.disabled = false;
+    const message = error.name === 'NotAllowedError' ? 'Captura cancelada ou permissão negada.' : error.name === 'NotSupportedError' ? 'Este ambiente não suporta captura de tela. Use Chrome/Edge desktop.' : error.message;
+    setStatus(message, 'error');
+  }
+}
+
+shareButton.addEventListener('click', () => beginSession('host'));
+watchButton.addEventListener('click', () => beginSession('viewer'));
+stopButton.addEventListener('click', stopSession);
+micButton.addEventListener('click', () => setMicrophoneEnabled(localMuted ? true : false));
+audioInput.addEventListener('change', replaceMicrophone);
+cameraButton.addEventListener('click', () => setCameraEnabled(!cameraEnabled));
+videoInput.addEventListener('change', replaceCamera);
+displayNameInput.addEventListener('input', updateLobbyIdentity);
+navigator.mediaDevices?.addEventListener?.('devicechange', () => { refreshAudioInputs(); refreshVideoInputs(); });
+
+$('#chatForm').addEventListener('submit', (event) => {
+  event.preventDefault();
+  const text = chatInput.value.trim();
+  if (!text || text.length > 1000) return;
+  if (!sendSignal({ type: 'chat', text })) { showToast('Conecte-se à sala para enviar mensagens.'); return; }
+  chatInput.value = '';
+});
+
+$('#emojiButton').addEventListener('click', () => {
+  const emoji = ['😀', '😂', '❤️', '👍', '🎮'][Math.floor(Math.random() * 5)];
+  const start = chatInput.selectionStart;
+  const end = chatInput.selectionEnd;
+  chatInput.setRangeText(emoji, start, end, 'end');
+  chatInput.focus();
+});
+
+$('#chatButton').addEventListener('click', () => {
+  const open = !(panelOpen && panelTab === 'chat');
+  setPanel(open, 'chat');
+  if (open) chatInput.focus();
+});
+
+$('#peopleButton').addEventListener('click', () => setPanel(!(panelOpen && panelTab === 'people'), 'people'));
+$('#peopleTab').addEventListener('click', () => setPanel(true, 'people'));
+$('#chatTab').addEventListener('click', () => { setPanel(true, 'chat'); chatInput.focus(); });
+$('#panelClose').addEventListener('click', () => setPanel(false));
+
+$('#copyRoomButton').addEventListener('click', () => copyText(roomInput.value.trim()));
+$('#copyPillButton').addEventListener('click', () => copyText(roomCode || roomInput.value.trim()));
+$('#pointerButton').addEventListener('click', () => setTools(!pointerEnabled, false));
+$('#drawButton').addEventListener('click', () => setTools(false, !drawEnabled));
+$('#clearButton').addEventListener('click', () => {
+  clearCanvas();
+  sendSignal({ type: 'clear-draw' });
+});
+
+$('#controlsButton').addEventListener('click', (event) => {
+  if (theaterEnabled) {
+    theaterEnabled = false;
+    document.body.classList.remove('theater');
+    $('#theaterButton').setAttribute('aria-pressed', 'false');
+    controlsHidden = false;
+    document.body.classList.remove('minimal');
+    event.currentTarget.setAttribute('aria-pressed', 'false');
+    requestAnimationFrame(resizeCanvas);
+    return;
+  }
+  controlsHidden = !controlsHidden;
+  document.body.classList.toggle('minimal', controlsHidden);
+  event.currentTarget.setAttribute('aria-pressed', String(controlsHidden));
+  requestAnimationFrame(resizeCanvas);
+});
+
+$('#theaterButton').addEventListener('click', (event) => {
+  theaterEnabled = !theaterEnabled;
+  document.body.classList.toggle('theater', theaterEnabled);
+  event.currentTarget.setAttribute('aria-pressed', String(theaterEnabled));
+  requestAnimationFrame(resizeCanvas);
+});
+
+$('#fullscreenButton').addEventListener('click', async () => {
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else await stageShell.requestFullscreen();
+  } catch (error) { showToast(`Tela cheia indisponível: ${error.message}`); }
+});
+document.addEventListener('fullscreenchange', () => requestAnimationFrame(resizeCanvas));
+window.addEventListener('resize', resizeCanvas);
+
+stageShell.addEventListener('pointermove', (event) => {
+  if (pointerEnabled) {
+    const now = performance.now();
+    if (now - lastPointerSent >= 35) {
+      sendSignal({ type: 'pointer', point: pointerPoint(event), active: true });
+      lastPointerSent = now;
+    }
+  }
+  if (drawing) {
+    const point = pointerPoint(event);
+    drawPoints.push(point);
+    if (drawPoints.length > 80) drawPoints = drawPoints.filter((_, index) => index % 2 === 0);
+    if (drawPoints.length > 1) drawStroke(drawPoints.slice(-2));
+  }
+});
+stageShell.addEventListener('pointerleave', () => {
+  if (pointerEnabled) sendSignal({ type: 'pointer', point: { x: 0, y: 0 }, active: false });
+});
+annotationCanvas.addEventListener('pointerdown', (event) => {
+  if (!drawEnabled) return;
+  drawing = true;
+  drawPoints = [pointerPoint(event)];
+  annotationCanvas.setPointerCapture(event.pointerId);
+});
+annotationCanvas.addEventListener('pointerup', () => {
+  if (!drawing) return;
+  drawing = false;
+  if (drawPoints.length >= 2) {
+    const color = '#8ab4f8';
+    sendSignal({ type: 'draw', points: drawPoints, color });
+  }
+  drawPoints = [];
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && (pointerEnabled || drawEnabled)) setTools(false, false);
+  const target = event.target;
+  if (!(event.altKey && event.shiftKey) || target.matches('input, textarea, select, [contenteditable="true"]')) return;
+  const key = event.key.toLowerCase();
+  if (key === 'm' && currentRole) { event.preventDefault(); setMicrophoneEnabled(localMuted); }
+  if (key === 't') { event.preventDefault(); $('#theaterButton').click(); }
+  if (key === 'f') { event.preventDefault(); $('#fullscreenButton').click(); }
+  if (key === 'c') { event.preventDefault(); $('#controlsButton').click(); }
+});
+
+updateLobbyIdentity();
+resizeCanvas();
+renderParticipants();
