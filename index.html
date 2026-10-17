@@ -129,7 +129,7 @@
     .small-status { color: var(--muted); font-size: 12px; }
     .voice-actions { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; }
     .voice-actions select { min-width: 0; height: 42px; padding: 0 8px; color: var(--text); background: #101512; border: 1px solid var(--line); border-radius: 5px; font: inherit; }
-    .mic-off { color: #fff !important; background: #8c453d !important; border-color: #8c453d !important; }
+    .mic-off, .cam-off { color: #fff !important; background: #8c453d !important; border-color: #8c453d !important; }
     .section-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     .section-title h2 { margin-bottom: 0; }
     .count { color: var(--muted); font-size: 12px; }
@@ -179,6 +179,13 @@
     .toast { position: fixed; z-index: 50; left: 50%; bottom: 18px; max-width: calc(100% - 32px); padding: 9px 14px; color: var(--text); background: #27332c; border: 1px solid var(--line); border-radius: 5px; transform: translateX(-50%); }
     .toast[hidden] { display: none; }
 
+    .camera-strip { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .camera-strip:empty { display: none; }
+    .cam-tile { position: relative; width: 176px; aspect-ratio: 4 / 3; overflow: hidden; background: #0d1310; border: 1px solid var(--line); border-radius: 10px; }
+    .cam-tile video { width: 100%; height: 100%; max-height: none; aspect-ratio: auto; object-fit: cover; background: #000; }
+    .cam-tile video.mirror { transform: scaleX(-1); }
+    .cam-badge { position: absolute; left: 6px; bottom: 6px; max-width: calc(100% - 12px); padding: 3px 9px; color: var(--text); background: #000000a6; border-radius: 999px; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
     @media (max-width: 720px) {
       main { width: min(100% - 24px, 720px); padding-top: 18px; }
       .workspace { grid-template-columns: 1fr; gap: 14px; }
@@ -189,6 +196,7 @@
       .chat-block { grid-column: 1 / -1; }
       .chat-log { max-height: 170px; }
       .stage-shell.is-theater { inset: 5px; }
+      .cam-tile { width: calc(50% - 4px); }
       .stage-toolbar { justify-content: flex-start; }
       .screen-info { flex-basis: 100%; order: 1; }
     }
@@ -239,6 +247,15 @@
         </section>
 
         <section class="control-block">
+          <h2>Câmera</h2>
+          <div class="voice-actions">
+            <button id="cameraButton" class="secondary cam-off" type="button" aria-pressed="false">Câmera desligada</button>
+            <select id="videoInput" aria-label="Dispositivo de câmera"><option value="">Câmera padrão</option></select>
+          </div>
+          <p id="cameraStatus" class="footnote">Ative para compartilhar sua câmera com a sala, do celular ou do computador.</p>
+        </section>
+
+        <section class="control-block">
           <div class="section-title"><h2>Participantes</h2><span id="participantCount" class="count">0</span></div>
           <ul id="participantList" class="participant-list" aria-live="polite"></ul>
         </section>
@@ -270,6 +287,7 @@
         <canvas id="annotationCanvas" aria-label="Camada de ponteiro e marcação"></canvas>
         <span id="remotePointer" class="remote-pointer" aria-hidden="true"></span>
       </div>
+      <div id="cameraStrip" class="camera-strip" aria-label="Câmeras dos participantes"></div>
       </div>
     </section>
     <div id="toast" class="toast" role="status" hidden></div>
@@ -286,6 +304,9 @@
     const stopButton = $('#stopButton');
     const micButton = $('#micButton');
     const audioInput = $('#audioInput');
+    const cameraButton = $('#cameraButton');
+    const videoInput = $('#videoInput');
+    const cameraStrip = $('#cameraStrip');
     const statusText = $('#status');
     const statusDot = $('#statusDot');
     const roomLink = $('#roomLink');
@@ -303,13 +324,16 @@
     const chatInput = $('#chatInput');
     const peers = new Map();
     const participants = new Map();
+    const remoteCameras = new Map();
     let socket;
     let localStream;
     let microphoneStream;
+    let cameraStream;
     let currentRole;
     let roomCode;
     let localPeerId;
     let localMuted = true;
+    let cameraEnabled = false;
     let shouldReconnect = false;
     let intentionalClose = false;
     let reconnectAttempt = 0;
@@ -375,6 +399,7 @@
         name: displayNameInput.value.trim() || 'Participante',
         role: currentRole,
         muted: localMuted,
+        camera: cameraEnabled,
         local: true
       });
       renderParticipants();
@@ -399,7 +424,8 @@
         meta.className = 'participant-meta';
         const roleText = participant.role === 'host' ? 'Transmitindo' : 'Espectador';
         const micText = participant.muted ? ' · Mic desligado' : ' · Mic ligado';
-        meta.textContent = `${roleText}${micText}`;
+        const camText = participant.camera ? ' · Câmera' : '';
+        meta.textContent = `${roleText}${micText}${camText}`;
         row.append(dot, name, meta);
 
         if (!participant.local) {
@@ -454,12 +480,14 @@
         peerId: peer.peerId,
         name: peer.name.slice(0, 32),
         role: peer.role,
-        muted: typeof peer.muted === 'boolean' ? peer.muted : existing?.muted ?? true
+        muted: typeof peer.muted === 'boolean' ? peer.muted : existing?.muted ?? true,
+        camera: typeof peer.camera === 'boolean' ? peer.camera : existing?.camera ?? false
       });
       renderParticipants();
     }
 
     function closePeer(peerId) {
+      removeRemoteCamera(peerId);
       const state = peers.get(peerId);
       if (state) {
         clearInterval(state.speakingTimer);
@@ -498,9 +526,11 @@
       if (peers.has(peerId)) return peers.get(peerId);
       const pc = new RTCPeerConnection(rtcConfig);
       const audioTransceiver = pc.addTransceiver('audio', { direction: 'sendrecv' });
+      const cameraTransceiver = pc.addTransceiver('video', { direction: 'sendrecv' });
       const state = {
         pc,
         audioSender: audioTransceiver.sender,
+        cameraSender: cameraTransceiver.sender,
         pendingCandidates: [],
         makingOffer: false,
         offerSent: false,
@@ -519,6 +549,8 @@
       if (currentRole === 'host' && localStream) {
         for (const track of localStream.getVideoTracks()) state.videoSender = pc.addTrack(track, localStream);
       }
+      const cameraTrack = cameraStream?.getVideoTracks()[0];
+      if (cameraTrack) state.cameraSender.replaceTrack(cameraTrack).catch(console.error);
       if (microphoneStream?.getAudioTracks()[0]) {
         state.audioSender.replaceTrack(microphoneStream.getAudioTracks()[0]).catch(console.error);
       }
@@ -527,8 +559,12 @@
         if (candidate) sendSignal({ type: 'candidate', target: peerId, candidate });
       };
 
-      pc.ontrack = ({ track }) => {
+      pc.ontrack = ({ track, transceiver }) => {
         if (track.kind === 'video') {
+          if (transceiver?.mid === '1') {
+            storeRemoteCameraTrack(peerId, track);
+            return;
+          }
           if (currentRole === 'viewer') {
             video.srcObject = new MediaStream([track]);
             video.muted = false;
@@ -666,8 +702,12 @@
       }
 
       if (message.type === 'peer-state' && typeof message.peerId === 'string' && typeof message.muted === 'boolean') {
-        updateParticipant(message.peerId, { muted: message.muted });
+        const changes = { muted: message.muted };
+        if (typeof message.camera === 'boolean') changes.camera = message.camera;
+        updateParticipant(message.peerId, changes);
         if (message.muted) setParticipantSpeaking(message.peerId, false);
+        if (changes.camera === true) ensureRemoteCameraTile(message.peerId);
+        if (changes.camera === false) removeRemoteCameraTile(message.peerId);
         return;
       }
 
@@ -714,7 +754,8 @@
             role: currentRole,
             room: roomCode,
             name: displayNameInput.value.trim().slice(0, 32) || 'Participante',
-            muted: localMuted
+            muted: localMuted,
+            camera: cameraEnabled
           }));
         });
 
@@ -745,6 +786,7 @@
               if (isOfferer(peer.peerId)) await initiatePeer(peer.peerId, state);
             }
             refreshAudioInputs();
+            refreshVideoInputs();
             reconnectAttempt = 0;
             shouldReconnect = true;
             const hasDisplayAudio = localStream?.getAudioTracks().some((track) => track.readyState === 'live');
@@ -948,7 +990,7 @@
       micButton.setAttribute('aria-pressed', String(enabled));
       $('#micStatus').textContent = enabled ? 'Seu microfone está ativo nesta sala.' : 'Microfone desligado.';
       updateLocalParticipant();
-      sendSignal({ type: 'state', muted: localMuted });
+      sendSignal({ type: 'state', muted: localMuted, camera: cameraEnabled });
     }
 
     async function replaceMicrophone() {
@@ -964,6 +1006,169 @@
         $('#micStatus').textContent = error.message;
         showToast(error.message);
       }
+    }
+
+    async function refreshVideoInputs() {
+      if (!navigator.mediaDevices?.enumerateDevices) return;
+      try {
+        const selected = videoInput.value;
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const inputs = devices.filter((device) => device.kind === 'videoinput');
+        videoInput.replaceChildren();
+        for (const [index, device] of inputs.entries()) {
+          const option = document.createElement('option');
+          option.value = device.deviceId;
+          option.textContent = device.label || `Câmera ${index + 1}`;
+          videoInput.append(option);
+        }
+        if (!inputs.length) {
+          const option = document.createElement('option');
+          option.value = '';
+          option.textContent = 'Nenhuma câmera encontrada';
+          videoInput.append(option);
+        } else if (inputs.some((device) => device.deviceId === selected)) {
+          videoInput.value = selected;
+        }
+      } catch (error) {
+        console.warn('Não foi possível listar câmeras:', error);
+      }
+    }
+
+    async function acquireCamera() {
+      if (!navigator.mediaDevices?.getUserMedia) throw new Error('Este navegador não permite acesso à câmera nesta origem. Use HTTPS.');
+      const video = { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' };
+      if (videoInput.value) { video.deviceId = { exact: videoInput.value }; delete video.facingMode; }
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({ video, audio: false });
+      } catch (error) {
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') throw new Error('Permissão de câmera negada. Autorize a câmera nas configurações do navegador.');
+        if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') throw new Error('Nenhuma câmera foi encontrada. Conecte um dispositivo e tente novamente.');
+        if (error.name === 'NotReadableError' || error.name === 'TrackStartError') throw new Error('A câmera está em uso por outro aplicativo.');
+        throw error;
+      }
+      const track = cameraStream.getVideoTracks()[0];
+      if (!track) throw new Error('O navegador não retornou uma faixa de câmera.');
+      track.addEventListener('ended', handleCameraTrackEnded, { once: true });
+      await refreshVideoInputs();
+      return track;
+    }
+
+    function handleCameraTrackEnded() {
+      if (cameraEnabled) setCameraEnabled(false);
+    }
+
+    async function setCameraEnabled(enabled) {
+      if (cameraEnabled === enabled) return;
+      if (enabled && !cameraStream) {
+        cameraButton.disabled = true;
+        $('#cameraStatus').textContent = 'Solicitando permissão para a câmera...';
+        try { await acquireCamera(); }
+        catch (error) {
+          $('#cameraStatus').textContent = error.message;
+          showToast(error.message);
+          cameraButton.disabled = false;
+          return;
+        }
+      }
+      cameraEnabled = enabled;
+      if (!enabled && cameraStream) {
+        for (const track of cameraStream.getTracks()) track.stop();
+        cameraStream = null;
+      }
+      const cameraTrack = cameraStream?.getVideoTracks()[0] || null;
+      await Promise.all([...peers.values()].map((state) => state.cameraSender.replaceTrack(enabled ? cameraTrack : null).catch((error) => console.warn('Falha ao alternar câmera:', error))));
+      renderLocalCameraTile();
+      cameraButton.disabled = false;
+      cameraButton.textContent = enabled ? 'Câmera ligada' : 'Câmera desligada';
+      cameraButton.classList.toggle('cam-off', !enabled);
+      cameraButton.setAttribute('aria-pressed', String(enabled));
+      $('#cameraStatus').textContent = enabled
+        ? (currentRole ? 'Sua câmera está ativa nesta sala.' : 'Câmera ativa; entre em uma sala para compartilhar.')
+        : 'Câmera desligada.';
+      sendSignal({ type: 'state', muted: localMuted, camera: cameraEnabled });
+      updateLocalParticipant();
+    }
+
+    async function replaceCamera() {
+      if (!cameraStream || !cameraEnabled) return;
+      try {
+        const oldStream = cameraStream;
+        await acquireCamera();
+        const nextTrack = cameraStream.getVideoTracks()[0];
+        for (const track of oldStream.getVideoTracks()) track.removeEventListener('ended', handleCameraTrackEnded);
+        await Promise.all([...peers.values()].map((state) => state.cameraSender.replaceTrack(nextTrack)));
+        for (const track of oldStream.getTracks()) track.stop();
+        renderLocalCameraTile();
+      } catch (error) {
+        $('#cameraStatus').textContent = error.message;
+        showToast(error.message);
+      }
+    }
+
+    function createCameraTile() {
+      const tile = document.createElement('div');
+      tile.className = 'cam-tile';
+      const media = document.createElement('video');
+      media.autoplay = true;
+      media.playsInline = true;
+      media.muted = true;
+      const badge = document.createElement('span');
+      badge.className = 'cam-badge';
+      tile.append(media, badge);
+      return tile;
+    }
+
+    function renderLocalCameraTile() {
+      const tile = cameraStrip.querySelector('[data-local-camera]');
+      if (!cameraEnabled || !cameraStream) {
+        tile?.remove();
+        return;
+      }
+      const element = tile || createCameraTile();
+      element.dataset.localCamera = 'true';
+      const media = element.querySelector('video');
+      media.classList.add('mirror');
+      if (media.srcObject !== cameraStream) {
+        media.srcObject = cameraStream;
+        media.play().catch(() => {});
+      }
+      element.querySelector('.cam-badge').textContent = `${displayNameInput.value.trim() || 'Participante'} (você)`;
+      if (!tile) cameraStrip.append(element);
+    }
+
+    function storeRemoteCameraTrack(peerId, track) {
+      const entry = remoteCameras.get(peerId) || { track: null, tile: null, video: null };
+      entry.track = track;
+      remoteCameras.set(peerId, entry);
+      if (participants.get(peerId)?.camera) ensureRemoteCameraTile(peerId);
+    }
+
+    function ensureRemoteCameraTile(peerId) {
+      const entry = remoteCameras.get(peerId);
+      if (!entry || !entry.track || entry.tile) return;
+      const tile = createCameraTile();
+      tile.dataset.peerId = peerId;
+      tile.querySelector('.cam-badge').textContent = participants.get(peerId)?.name || 'Participante';
+      const media = tile.querySelector('video');
+      media.srcObject = new MediaStream([entry.track]);
+      media.play().catch(() => {});
+      entry.tile = tile;
+      entry.video = media;
+      cameraStrip.append(tile);
+    }
+
+    function removeRemoteCameraTile(peerId) {
+      const entry = remoteCameras.get(peerId);
+      if (entry?.tile) {
+        entry.tile.remove();
+        entry.tile = null;
+        entry.video = null;
+      }
+    }
+
+    function removeRemoteCamera(peerId) {
+      removeRemoteCameraTile(peerId);
+      remoteCameras.delete(peerId);
     }
 
     function resizeCanvas() {
@@ -1070,6 +1275,7 @@
       if (microphoneStream) for (const track of microphoneStream.getTracks()) track.stop();
       clearInterval(localAudioMonitor.speakingTimer);
       microphoneStream = null;
+      setCameraEnabled(false);
       if (localStream) for (const track of localStream.getTracks()) track.stop();
       localStream = null;
       if (audioContext) { audioContext.close().catch(() => {}); audioContext = null; }
@@ -1149,7 +1355,9 @@
     stopButton.addEventListener('click', stopSession);
     micButton.addEventListener('click', () => setMicrophoneEnabled(localMuted ? true : false));
     audioInput.addEventListener('change', replaceMicrophone);
-    navigator.mediaDevices?.addEventListener?.('devicechange', refreshAudioInputs);
+    cameraButton.addEventListener('click', () => setCameraEnabled(!cameraEnabled));
+    videoInput.addEventListener('change', replaceCamera);
+    navigator.mediaDevices?.addEventListener?.('devicechange', () => { refreshAudioInputs(); refreshVideoInputs(); });
 
     $('#chatForm').addEventListener('submit', (event) => {
       event.preventDefault();
@@ -1262,6 +1470,7 @@
 
     resizeCanvas();
     renderParticipants();
+    refreshVideoInputs();
   </script>
 </body>
 </html>

@@ -50,7 +50,11 @@ const webSocketServer = new WebSocketServer({
     if (!origin) return true;
 
     try {
-      return new URL(origin).host === req.headers.host;
+      const originHost = new URL(origin).host;
+      if (originHost === req.headers.host) return true;
+      if (process.env.BASE44_PREVIEW_MODE === '1' && process.env.BASE44_PUBLIC_HOST_SUFFIX &&
+          originHost.endsWith(process.env.BASE44_PUBLIC_HOST_SUFFIX)) return true;
+      return false;
     } catch {
       return false;
     }
@@ -83,7 +87,7 @@ function roomMembers(room) {
 }
 
 function publicPeer(socket) {
-  return { peerId: socket.clientId, role: socket.role, name: socket.displayName, muted: socket.muted };
+  return { peerId: socket.clientId, role: socket.role, name: socket.displayName, muted: socket.muted, camera: socket.camera === true };
 }
 
 function broadcast(room, message, excludedId) {
@@ -170,6 +174,7 @@ webSocketServer.on('connection', (socket) => {
         ? message.name.replace(/<[^>]*>|[\u0000-\u001f]/g, '').trim().slice(0, 32) || `Pessoa ${socket.clientId.slice(0, 4)}`
         : `Pessoa ${socket.clientId.slice(0, 4)}`;
       socket.muted = message.muted !== false;
+      socket.camera = message.camera === true;
       const existingPeers = [...members.values()].map(publicPeer);
       members.set(socket.clientId, socket);
       send(socket, { type: 'joined', peerId: socket.clientId, role, name: socket.displayName, peers: existingPeers, temporary: true });
@@ -205,7 +210,8 @@ webSocketServer.on('connection', (socket) => {
         return;
       }
       socket.muted = message.muted;
-      broadcast(room, { type: 'peer-state', peerId: socket.clientId, muted: socket.muted }, socket.clientId);
+      socket.camera = message.camera === true;
+      broadcast(room, { type: 'peer-state', peerId: socket.clientId, muted: socket.muted, camera: socket.camera }, socket.clientId);
       return;
     }
 
