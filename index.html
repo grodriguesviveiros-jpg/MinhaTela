@@ -12,7 +12,7 @@
     <div class="brand"><span class="mark" aria-hidden="true"></span>MinhaTela</div>
     <div class="top-actions">
       <span id="roomPill" class="room-pill" hidden>Código:&nbsp;<strong id="roomPillCode"></strong>
-        <button id="copyPillButton" class="ghost" type="button" title="Copiar código da sala" aria-label="Copiar código da sala">
+        <button id="copyPillButton" class="ghost" type="button" title="Copiar link da sala" aria-label="Copiar link da sala">
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
         </button>
       </span>
@@ -33,7 +33,7 @@
       <label for="room">Código da sala</label>
       <div class="field-row">
         <input id="room" maxlength="40" autocomplete="off" spellcheck="false" aria-label="Código da sala">
-        <button id="copyRoomButton" class="ghost square" type="button" title="Copiar código da sala" aria-label="Copiar código da sala">
+        <button id="copyRoomButton" class="ghost square" type="button" title="Copiar link da sala" aria-label="Copiar link da sala">
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
         </button>
       </div>
@@ -79,7 +79,14 @@
         <div id="chatPane" class="panel-body" hidden>
           <div id="chatLog" class="chat-log" role="log" aria-live="polite" aria-relevant="additions"></div>
           <form id="chatForm" class="chat-form">
-            <button id="emojiButton" class="ctl small" type="button" title="Inserir emoji" aria-label="Inserir emoji">😀</button>
+            <button id="emojiButton" class="ctl small" type="button" title="Inserir emoji" aria-label="Inserir emoji" aria-haspopup="true">😀</button>
+            <div id="emojiMenu" class="emoji-menu" hidden>
+              <button type="button" data-emoji="😀">😀</button>
+              <button type="button" data-emoji="😂">😂</button>
+              <button type="button" data-emoji="❤️">❤️</button>
+              <button type="button" data-emoji="👍">👍</button>
+              <button type="button" data-emoji="🎮">🎮</button>
+            </div>
             <input id="chatInput" maxlength="1000" autocomplete="off" placeholder="Mensagem..." aria-label="Mensagem">
             <button type="submit" class="ctl small" aria-label="Enviar mensagem" title="Enviar mensagem">
               <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"/></svg>

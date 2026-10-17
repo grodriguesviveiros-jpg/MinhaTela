@@ -136,7 +136,10 @@ label { display: block; margin: 10px 0 6px; color: var(--muted); font-size: 12px
 .chat-message p { margin: 4px 0 0; font-size: 13px; line-height: 1.4; white-space: pre-wrap; }
 .chat-message button { height: 24px; margin-left: auto; padding: 0 8px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); font-size: 10.5px; }
 .chat-message button:hover { background: var(--surface-3); color: var(--text); }
-.chat-form { display: flex; gap: 8px; margin-top: 10px; }
+.chat-form { position: relative; display: flex; gap: 8px; margin-top: 10px; }
+.emoji-menu { position: absolute; left: 0; bottom: 46px; z-index: 10; display: flex; gap: 4px; padding: 6px; background: var(--surface-3); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 4px 16px #0008; }
+.emoji-menu button { width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: transparent; color: var(--text); font-size: 17px; }
+.emoji-menu button:hover { background: var(--surface-2); }
 .chat-form input { flex: 1; min-width: 0; height: 40px; letter-spacing: 0; }
 .ctl.small { width: 36px; height: 36px; flex: 0 0 auto; }
 .ctl.small .icon { width: 18px; height: 18px; }

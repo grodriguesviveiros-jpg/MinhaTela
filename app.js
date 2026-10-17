@@ -70,6 +70,8 @@ const rtcConfig = {
 };
 
 roomInput.value = crypto.randomUUID().replaceAll('-', '').slice(0, 10).toUpperCase();
+const linkedRoom = new URLSearchParams(location.search).get('sala');
+if (linkedRoom && /^[a-zA-Z0-9_-]{4,40}$/.test(linkedRoom)) roomInput.value = linkedRoom;
 const storedName = localStorage.getItem('minhatela-name');
 if (storedName) displayNameInput.value = storedName;
 
@@ -662,6 +664,10 @@ function appendChatMessage(message) {
   chatLog.scrollTop = chatLog.scrollHeight;
 }
 
+function roomLink(room) {
+  return room ? `${location.origin}${location.pathname}?sala=${encodeURIComponent(room)}` : room || '';
+}
+
 async function copyText(value) {
   try {
     await navigator.clipboard.writeText(value);
@@ -1215,12 +1221,19 @@ $('#chatForm').addEventListener('submit', (event) => {
   chatInput.value = '';
 });
 
+const emojiMenu = $('#emojiMenu');
 $('#emojiButton').addEventListener('click', () => {
-  const emoji = ['😀', '😂', '❤️', '👍', '🎮'][Math.floor(Math.random() * 5)];
-  const start = chatInput.selectionStart;
-  const end = chatInput.selectionEnd;
-  chatInput.setRangeText(emoji, start, end, 'end');
+  emojiMenu.hidden = !emojiMenu.hidden;
+});
+emojiMenu.addEventListener('click', (event) => {
+  const emoji = event.target.closest('button')?.dataset.emoji;
+  if (!emoji) return;
+  chatInput.setRangeText(emoji, chatInput.selectionStart, chatInput.selectionEnd, 'end');
+  emojiMenu.hidden = true;
   chatInput.focus();
+});
+document.addEventListener('click', (event) => {
+  if (!emojiMenu.hidden && !event.target.closest('#emojiMenu') && !event.target.closest('#emojiButton')) emojiMenu.hidden = true;
 });
 
 $('#chatButton').addEventListener('click', () => {
@@ -1234,8 +1247,8 @@ $('#peopleTab').addEventListener('click', () => setPanel(true, 'people'));
 $('#chatTab').addEventListener('click', () => { setPanel(true, 'chat'); chatInput.focus(); });
 $('#panelClose').addEventListener('click', () => setPanel(false));
 
-$('#copyRoomButton').addEventListener('click', () => copyText(roomInput.value.trim()));
-$('#copyPillButton').addEventListener('click', () => copyText(roomCode || roomInput.value.trim()));
+$('#copyRoomButton').addEventListener('click', () => copyText(roomLink(roomInput.value.trim())));
+$('#copyPillButton').addEventListener('click', () => copyText(roomLink(roomCode || roomInput.value.trim())));
 $('#pointerButton').addEventListener('click', () => setTools(!pointerEnabled, false));
 $('#drawButton').addEventListener('click', () => setTools(false, !drawEnabled));
 $('#clearButton').addEventListener('click', () => {
