@@ -10,6 +10,7 @@ const stopLabel = $('#stopLabel');
 const micButton = $('#micButton');
 const audioInput = $('#audioInput');
 const cameraButton = $('#cameraButton');
+const cameraOnlyButton = $('#cameraOnlyButton');
 const videoInput = $('#videoInput');
 const cameraStrip = $('#cameraStrip');
 const statusText = $('#status');
@@ -43,6 +44,7 @@ let roomCode;
 let localPeerId;
 let localMuted = true;
 let cameraEnabled = false;
+let cameraOnly = false;
 let shouldReconnect = false;
 let intentionalClose = false;
 let reconnectAttempt = 0;
@@ -220,7 +222,8 @@ function registerPeer(peer) {
     name: peer.name.slice(0, 32),
     role: peer.role,
     muted: typeof peer.muted === 'boolean' ? peer.muted : existing?.muted ?? true,
-    camera: typeof peer.camera === 'boolean' ? peer.camera : existing?.camera ?? false
+    camera: typeof peer.camera === 'boolean' ? peer.camera : existing?.camera ?? false,
+    stage: peer.stage === 'camera' ? 'camera' : 'screen'
   });
   renderParticipants();
 }
@@ -265,7 +268,8 @@ function createPeer(peerId) {
   if (peers.has(peerId)) return peers.get(peerId);
   const pc = new RTCPeerConnection(rtcConfig);
   const audioTransceiver = pc.addTransceiver('audio', { direction: 'sendrecv' });
-  const cameraTransceiver = pc.addTransceiver('video', { direction: currentRole === 'host' ? 'sendrecv' : 'recvonly' });
+  const stageTransceiver = pc.addTransceiver('video', { direction: currentRole === 'host' ? 'sendonly' : 'recvonly' });
+  const cameraTransceiver = pc.addTransceiver('video', { direction: currentRole === 'host' ? 'sendonly' : 'recvonly' });
   const state = {
     pc,
     audioSender: audioTransceiver.sender,
@@ -278,18 +282,21 @@ function createPeer(peerId) {
     analyser: null,
     audioSource: null,
     speakingTimer: null,
-    videoSender: null
+    videoSender: stageTransceiver.sender
   };
   state.audioElement.autoplay = true;
   state.audioElement.playsInline = true;
   state.audioElement.volume = 1;
   peers.set(peerId, state);
 
-  if (currentRole === 'host' && localStream) {
-    for (const track of localStream.getVideoTracks()) state.videoSender = pc.addTrack(track, localStream);
+  if (currentRole === 'host') {
+    const stageTrack = cameraOnly ? cameraStream?.getVideoTracks()[0] : localStream?.getVideoTracks()[0];
+    if (stageTrack) state.videoSender.replaceTrack(stageTrack).catch(console.error);
   }
-  const cameraTrack = cameraStream?.getVideoTracks()[0];
-  if (cameraTrack) state.cameraSender.replaceTrack(cameraTrack).catch(console.error);
+  if (!cameraOnly) {
+    const cameraTrack = cameraStream?.getVideoTracks()[0];
+    if (cameraTrack) state.cameraSender.replaceTrack(cameraTrack).catch(console.error);
+  }
   if (microphoneStream?.getAudioTracks()[0]) {
     state.audioSender.replaceTrack(microphoneStream.getAudioTracks()[0]).catch(console.error);
   }
@@ -300,7 +307,7 @@ function createPeer(peerId) {
 
   pc.ontrack = ({ track, transceiver }) => {
     if (track.kind === 'video') {
-      if (transceiver?.mid === '1') {
+      if (transceiver?.mid === '2') {
         storeRemoteCameraTrack(peerId, track);
         return;
       }
@@ -442,10 +449,15 @@ async function handleSignal(message) {
   if (message.type === 'peer-state' && typeof message.peerId === 'string' && typeof message.muted === 'boolean') {
     const changes = { muted: message.muted };
     if (typeof message.camera === 'boolean') changes.camera = message.camera;
+    if (message.stage === 'camera' || message.stage === 'screen') changes.stage = message.stage;
     updateParticipant(message.peerId, changes);
     if (message.muted) setParticipantSpeaking(message.peerId, false);
-    if (changes.camera === true) ensureRemoteCameraTile(message.peerId);
-    if (changes.camera === false) removeRemoteCameraTile(message.peerId);
+    const hostCameraOnly = changes.stage === 'camera';
+    if (changes.camera === true && !hostCameraOnly) ensureRemoteCameraTile(message.peerId);
+    if (changes.camera === false || hostCameraOnly) removeRemoteCameraTile(message.peerId);
+    if (changes.stage && participants.get(message.peerId)?.role === 'host' && currentRole === 'viewer') {
+      setMediaStatus(changes.stage === 'camera' ? 'Câmera em tela cheia' : 'Recebendo tela');
+    }
     return;
   }
 
@@ -493,7 +505,8 @@ function createSocketConnection(reconnecting = false) {
         room: roomCode,
         name: displayNameInput.value.trim().slice(0, 32) || 'Participante',
         muted: localMuted,
-        camera: cameraEnabled
+        camera: cameraEnabled,
+        stage: cameraOnly ? 'camera' : 'screen'
       }));
     });
 
@@ -512,6 +525,8 @@ function createSocketConnection(reconnecting = false) {
         audioInput.disabled = false;
         videoInput.disabled = currentRole !== 'host';
         cameraButton.style.display = currentRole === 'host' ? '' : 'none';
+        cameraOnlyButton.style.display = currentRole === 'host' ? '' : 'none';
+        updateCameraOnlyButton();
         roomInput.disabled = true;
         shareButton.disabled = true;
         watchButton.disabled = true;
@@ -540,8 +555,11 @@ function createSocketConnection(reconnecting = false) {
             : 'Tela compartilhada sem áudio de sistema. Firefox não captura esse áudio; tente Chrome/Edge.';
         setStatus(connectedStatus, 'live');
         $('#connectionMetrics').textContent = `${participants.size} participante(s) · P2P conectando`;
-        if (currentRole === 'host') setMediaStatus('Tela compartilhada');
-        else setMediaStatus('Aguardando transmissão');
+        if (currentRole === 'host') setMediaStatus(cameraOnly ? 'Só câmera' : 'Tela compartilhada');
+        else {
+          const hostPeer = [...participants.values()].find((p) => p.role === 'host');
+          setMediaStatus(hostPeer?.stage === 'camera' ? 'Câmera em tela cheia' : 'Aguardando transmissão');
+        }
         startMetrics();
         resolve();
         return;
@@ -821,6 +839,20 @@ async function setCameraEnabled(enabled) {
     for (const track of cameraStream.getTracks()) track.stop();
     cameraStream = null;
   }
+  if (!enabled && cameraOnly) {
+    cameraOnly = false;
+    await Promise.all([...peers.values()].map((state) => Promise.allSettled([
+      state.videoSender.replaceTrack(null),
+      state.cameraSender.replaceTrack(null)
+    ])));
+    video.srcObject = null;
+    video.classList.remove('mirror');
+    video.hidden = true;
+    emptyState.hidden = false;
+    setMediaStatus('Sem transmissão ativa');
+    updateCameraOnlyButton();
+    sendSignal({ type: 'state', muted: localMuted, camera: false, stage: 'screen' });
+  }
   const cameraTrack = cameraStream?.getVideoTracks()[0] || null;
   await Promise.all([...peers.values()].map((state) => state.cameraSender.replaceTrack(enabled ? cameraTrack : null).catch((error) => console.warn('Falha ao alternar câmera:', error))));
   renderLocalCameraTile();
@@ -849,6 +881,59 @@ async function replaceCamera() {
   }
 }
 
+function updateCameraOnlyButton() {
+  cameraOnlyButton.classList.toggle('on', cameraOnly);
+  cameraOnlyButton.setAttribute('aria-pressed', String(cameraOnly));
+  cameraOnlyButton.setAttribute('aria-label', cameraOnly ? 'Voltar a compartilhar a tela' : 'Só câmera, sem a tela');
+  cameraOnlyButton.title = cameraOnly ? 'Voltar a compartilhar a tela' : 'Só câmera (tirar a tela)';
+}
+
+async function setStageCameraOnly(enabled) {
+  if (cameraOnly === enabled || currentRole !== 'host') return;
+  let screenTrack = localStream?.getVideoTracks()[0] || null;
+  if (!enabled) {
+    setStatus('Selecione a tela ou janela para voltar a compartilhar.');
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 60, max: 60 } }, audio: true });
+      if (localStream) for (const track of localStream.getTracks()) track.stop();
+      localStream = stream;
+      screenTrack = stream.getVideoTracks()[0];
+      if (!screenTrack) throw new Error('A captura não forneceu uma faixa de vídeo.');
+      screenTrack.addEventListener('ended', stopSession, { once: true });
+    } catch (error) {
+      showToast(error.name === 'NotAllowedError' ? 'Captura cancelada; continuando só com a câmera.' : error.message);
+      setStatus('Câmera em tela cheia para os participantes.', 'live');
+      return;
+    }
+  } else if (!cameraEnabled) {
+    await setCameraEnabled(true);
+    if (!cameraStream) return;
+  }
+  cameraOnly = enabled;
+  const cameraTrack = cameraStream?.getVideoTracks()[0] || null;
+  const stageTrack = enabled ? cameraTrack : screenTrack;
+  await Promise.all([...peers.values()].map((state) => Promise.allSettled([
+    state.videoSender.replaceTrack(stageTrack),
+    state.cameraSender.replaceTrack(enabled ? null : cameraTrack)
+  ])));
+  if (enabled && localStream) {
+    for (const track of localStream.getTracks()) track.stop();
+    localStream = null;
+  }
+  video.srcObject = enabled ? cameraStream : localStream;
+  video.classList.toggle('mirror', enabled);
+  video.muted = true;
+  video.hidden = false;
+  emptyState.hidden = true;
+  video.play().catch(() => {});
+  renderLocalCameraTile();
+  updateCameraOnlyButton();
+  setMediaStatus(enabled ? 'Só câmera' : 'Tela compartilhada');
+  setStatus(enabled ? 'Câmera em tela cheia para os participantes.' : 'Tela compartilhada novamente.', 'live');
+  sendSignal({ type: 'state', muted: localMuted, camera: cameraEnabled, stage: enabled ? 'camera' : 'screen' });
+  updateLocalParticipant();
+}
+
 function createCameraTile() {
   const tile = document.createElement('div');
   tile.className = 'cam-tile';
@@ -864,7 +949,7 @@ function createCameraTile() {
 
 function renderLocalCameraTile() {
   const tile = cameraStrip.querySelector('[data-local-camera]');
-  if (!cameraEnabled || !cameraStream) {
+  if (!cameraEnabled || !cameraStream || cameraOnly) {
     tile?.remove();
     return;
   }
@@ -888,6 +973,7 @@ function storeRemoteCameraTrack(peerId, track) {
 }
 
 function ensureRemoteCameraTile(peerId) {
+  if (participants.get(peerId)?.stage === 'camera') return;
   const entry = remoteCameras.get(peerId);
   if (!entry || !entry.track || entry.tile) return;
   const tile = createCameraTile();
@@ -1047,6 +1133,12 @@ function stopSession() {
   micButton.setAttribute('aria-pressed', 'false');
   micButton.setAttribute('aria-label', 'Ligar microfone');
   cameraButton.style.display = '';
+  cameraOnly = false;
+  video.classList.remove('mirror');
+  cameraOnlyButton.style.display = '';
+  cameraOnlyButton.classList.remove('on');
+  cameraOnlyButton.setAttribute('aria-pressed', 'false');
+  cameraOnlyButton.setAttribute('aria-label', 'Só câmera, sem a tela');
   chatLog.replaceChildren();
   clearCanvas();
   setTools(false, false);
@@ -1110,6 +1202,7 @@ stopButton.addEventListener('click', stopSession);
 micButton.addEventListener('click', () => setMicrophoneEnabled(localMuted ? true : false));
 audioInput.addEventListener('change', replaceMicrophone);
 cameraButton.addEventListener('click', () => setCameraEnabled(!cameraEnabled));
+cameraOnlyButton.addEventListener('click', () => setStageCameraOnly(!cameraOnly));
 videoInput.addEventListener('change', replaceCamera);
 displayNameInput.addEventListener('input', updateLobbyIdentity);
 navigator.mediaDevices?.addEventListener?.('devicechange', () => { refreshAudioInputs(); refreshVideoInputs(); });

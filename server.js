@@ -93,7 +93,7 @@ function roomMembers(room) {
 }
 
 function publicPeer(socket) {
-  return { peerId: socket.clientId, role: socket.role, name: socket.displayName, muted: socket.muted, camera: socket.camera === true };
+  return { peerId: socket.clientId, role: socket.role, name: socket.displayName, muted: socket.muted, camera: socket.camera === true, stage: socket.stage === 'camera' ? 'camera' : 'screen' };
 }
 
 function broadcast(room, message, excludedId) {
@@ -181,6 +181,7 @@ webSocketServer.on('connection', (socket) => {
         : `Pessoa ${socket.clientId.slice(0, 4)}`;
       socket.muted = message.muted !== false;
       socket.camera = message.camera === true;
+      socket.stage = role === 'host' && message.stage === 'camera' ? 'camera' : 'screen';
       const existingPeers = [...members.values()].map(publicPeer);
       members.set(socket.clientId, socket);
       send(socket, { type: 'joined', peerId: socket.clientId, role, name: socket.displayName, peers: existingPeers, temporary: true });
@@ -217,7 +218,8 @@ webSocketServer.on('connection', (socket) => {
       }
       socket.muted = message.muted;
       socket.camera = socket.role === 'host' && message.camera === true;
-      broadcast(room, { type: 'peer-state', peerId: socket.clientId, muted: socket.muted, camera: socket.camera }, socket.clientId);
+      if (socket.role === 'host' && (message.stage === 'camera' || message.stage === 'screen')) socket.stage = message.stage;
+      broadcast(room, { type: 'peer-state', peerId: socket.clientId, muted: socket.muted, camera: socket.camera, stage: socket.stage }, socket.clientId);
       return;
     }
 
