@@ -5,277 +5,81 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>MinhaTela | Compartilhamento P2P</title>
-  <style>
-    :root {
-      color-scheme: dark;
-      --bg: #0d1210;
-      --panel: #151c18;
-      --panel-soft: #1a231e;
-      --line: #33423a;
-      --line-soft: #243029;
-      --text: #eef4ef;
-      --muted: #9fb2a6;
-      --green: #a7e3b4;
-      --green-deep: #6fc48a;
-      --green-ink: #10231a;
-      --red: #ff9b8d;
-      --radius: 10px;
-      --radius-sm: 7px;
-      --shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
-      --shadow-soft: 0 4px 14px rgba(0, 0, 0, 0.25);
-      --ring: 0 0 0 3px rgba(167, 227, 180, 0.22);
-    }
-
-    * { box-sizing: border-box; }
-
-    body {
-      min-height: 100vh;
-      margin: 0;
-      color: var(--text);
-      background-color: var(--bg);
-      background-image:
-        radial-gradient(ellipse 80% 50% at 15% -5%, #27382e 0, transparent 60%),
-        radial-gradient(ellipse 60% 45% at 90% 5%, #1d2c24 0, transparent 55%);
-      background-attachment: fixed;
-      font-family: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
-    }
-
-    main {
-      width: min(100% - 32px, 1080px);
-      margin: 0 auto;
-      padding: 30px 0 40px;
-    }
-
-    header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      padding-bottom: 22px;
-      border-bottom: 1px solid var(--line-soft);
-    }
-
-    .brand { display: flex; align-items: center; gap: 12px; }
-    .mark { width: 13px; height: 13px; background: linear-gradient(135deg, var(--green), var(--green-deep)); border-radius: 3px; transform: rotate(45deg); box-shadow: 0 0 14px rgba(167, 227, 180, 0.45); }
-    h1 { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: .01em; }
-    .eyebrow { color: var(--muted); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
-
-    .workspace {
-      display: grid;
-      grid-template-columns: minmax(250px, 320px) minmax(0, 1fr);
-      gap: 22px;
-      padding-top: 24px;
-    }
-
-    .controls { display: flex; flex-direction: column; gap: 14px; }
-    .control-block { padding: 16px; background: var(--panel); border: 1px solid var(--line-soft); border-radius: var(--radius); box-shadow: var(--shadow-soft); }
-    h2 { margin: 0 0 12px; font-size: 15px; font-weight: 620; }
-    label { display: block; margin-bottom: 7px; color: var(--muted); font-size: 13px; }
-
-    input {
-      width: 100%;
-      height: 42px;
-      padding: 0 12px;
-      color: var(--text);
-      background: #0f1411;
-      border: 1px solid var(--line);
-      border-radius: var(--radius-sm);
-      font: inherit;
-      letter-spacing: .04em;
-      transition: border-color 120ms ease, box-shadow 120ms ease;
-    }
-
-    input:hover:not(:disabled), select:hover:not(:disabled) { border-color: var(--green-deep); }
-    input:focus-visible, select:focus-visible { border-color: var(--green); box-shadow: var(--ring); outline: none; }
-    input:disabled { opacity: .6; }
-
-    button {
-      min-height: 42px;
-      padding: 0 14px;
-      color: var(--green-ink);
-      background: linear-gradient(180deg, #b9ecc5, var(--green) 55%, #8cd8a0);
-      border: 1px solid var(--green-deep);
-      border-radius: var(--radius-sm);
-      font: inherit;
-      font-weight: 650;
-      cursor: pointer;
-      box-shadow: var(--shadow-soft);
-      transition: filter 120ms ease, transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease, border-color 120ms ease, opacity 120ms ease;
-    }
-
-    button:hover:not(:disabled) { filter: brightness(1.07); transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35); }
-    button:active:not(:disabled) { transform: translateY(0); filter: brightness(.97); }
-    button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
-    button.secondary { color: var(--text); background: var(--panel-soft); border-color: var(--line); box-shadow: none; }
-    button.secondary:hover:not(:disabled) { background: #1f2a23; border-color: var(--green-deep); }
-    button:disabled { cursor: not-allowed; opacity: .55; }
-    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
-
-    .status-row { display: flex; align-items: center; gap: 9px; color: var(--muted); font-size: 13px; }
-    .status-dot { width: 8px; height: 8px; flex: 0 0 auto; margin-top: 5px; background: #718078; border-radius: 50%; }
-    .status-dot.live { background: var(--green); box-shadow: 0 0 10px #a7e36688; animation: pulse 2.2s ease-in-out infinite; }
-    .status-dot.error { background: var(--red); }
-    @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(167, 227, 180, 0.5); } 50% { box-shadow: 0 0 0 6px rgba(167, 227, 180, 0); } }
-    #status { min-height: 36px; margin-top: 9px; line-height: 1.45; }
-    #roomLink { min-height: 18px; margin-top: 8px; overflow-wrap: anywhere; color: var(--muted); font-size: 12px; }
-
-    .screen {
-      position: relative;
-      min-width: 0;
-      min-height: 390px;
-      display: grid;
-      place-items: center;
-      overflow: hidden;
-      background: #080a09;
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow-soft);
-    }
-
-    video { display: block; width: 100%; max-height: min(72vh, 760px); aspect-ratio: 16 / 9; object-fit: contain; background: #080a09; }
-    video[hidden] { display: none; }
-    .empty { padding: 28px 24px; color: #87968d; text-align: center; font-size: 14px; line-height: 1.6; }
-    .empty strong { display: block; margin-bottom: 8px; color: #c6d1ca; font-size: 16px; font-weight: 580; }
-    .footnote { margin: 15px 0 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
-
-    .controls { min-width: 0; }
-    .control-block { min-width: 0; }
-    .field-row { display: flex; gap: 8px; align-items: end; }
-    .field-row > div { flex: 1; min-width: 0; }
-    .field-row button { flex: 0 0 auto; }
-    .name-input { letter-spacing: 0; }
-    .status-row { align-items: flex-start; }
-    #status { margin: 0; }
-    .small-status { color: var(--muted); font-size: 12px; }
-    .voice-actions { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; }
-    .voice-actions select { min-width: 0; height: 42px; padding: 0 8px; color: var(--text); background: #101512; border: 1px solid var(--line); border-radius: 5px; font: inherit; }
-    .mic-off { color: #fff !important; background: #8c453d !important; border-color: #8c453d !important; }
-    .section-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-    .section-title h2 { margin-bottom: 0; }
-    .count { color: var(--muted); font-size: 12px; }
-    .participant-list { display: grid; gap: 7px; margin: 12px 0 0; padding: 0; list-style: none; }
-    .participant { display: grid; grid-template-columns: 9px minmax(0, 1fr) auto; align-items: center; gap: 8px; min-width: 0; padding: 7px 9px; background: var(--panel-soft); border: 1px solid var(--line-soft); border-radius: var(--radius-sm); }
-    .participant-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
-    .participant-meta { color: var(--muted); font-size: 11px; white-space: nowrap; }
-    .listen-button { grid-column: 3; min-height: 26px; padding: 0 6px; font-size: 10px; }
-    .participant-dot { width: 8px; height: 8px; background: #718078; border-radius: 50%; }
-    .participant-dot.speaking { background: var(--green); box-shadow: 0 0 10px #a7e36688; }
-    .participant-dot.offline { background: var(--red); }
-    .participant audio { display: none; }
-    .volume-control { grid-column: 2 / 4; width: 100%; height: 14px; accent-color: var(--green); }
-    .chat-block { display: flex; flex-direction: column; min-height: 170px; }
-    .chat-block.collapsed { min-height: 0; }
-    .chat-log { display: flex; flex-direction: column; gap: 8px; max-height: 240px; min-height: 100px; overflow-y: auto; margin: 12px 0; padding: 0 4px 0 0; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
-    .chat-log::-webkit-scrollbar { width: 6px; }
-    .chat-log::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
-    .chat-message { padding: 8px 10px; border: 1px solid #26332c; border-radius: var(--radius-sm); background: #131a16; overflow-wrap: anywhere; }
-    .chat-message.own { background: #1a2b21; border-color: #2f4a3a; }
-    .chat-message header { display: flex; gap: 8px; align-items: baseline; padding: 0; border: 0; }
-    .chat-message strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
-    .chat-message time { color: var(--muted); font-size: 10px; white-space: nowrap; }
-    .chat-message p { margin: 5px 0 0; font-size: 13px; line-height: 1.4; white-space: pre-wrap; }
-    .chat-message button { min-height: 24px; margin-left: auto; padding: 0 7px; font-size: 11px; }
-    .chat-form { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px; align-items: center; }
-    .emoji-menu { position: absolute; bottom: 46px; left: 0; z-index: 10; display: flex; gap: 4px; padding: 6px; background: var(--panel-soft); border: 1px solid var(--line); border-radius: var(--radius-sm); box-shadow: var(--shadow); }
-    .emoji-menu button { min-height: 34px; min-width: 34px; padding: 0; font-size: 17px; background: transparent; border: 0; box-shadow: none; }
-    .emoji-menu button:hover { background: #22302a; transform: none; }
-    .chat-form input { height: 38px; letter-spacing: 0; }
-    .chat-form button { min-height: 38px; padding: 0 10px; }
-    .chat-block.collapsed .chat-log, .chat-block.collapsed .chat-form { display: none; }
-    .stage { min-width: 0; }
-    .stage-toolbar { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; margin-bottom: 9px; }
-    .stage-toolbar button { min-height: 34px; padding: 0 10px; font-size: 12px; }
-    .stage-toolbar button[aria-pressed="true"] { color: var(--green-ink); background: var(--green); border-color: var(--green); }
-    .stage-shell { position: relative; display: grid; place-items: center; min-width: 0; min-height: 390px; overflow: hidden; background: #080a09; border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-soft); }
-    .stage-shell video { max-height: min(72vh, 760px); }
-    .stage-shell.is-theater { position: fixed; z-index: 20; inset: 12px; min-height: 0; border-color: #5f796a; box-shadow: 0 18px 80px #000b; }
-    .stage-shell.is-theater video { max-height: calc(100vh - 26px); }
-    .stage-shell:fullscreen { width: 100vw; height: 100vh; border: 0; border-radius: 0; }
-    .stage-shell:fullscreen video { max-height: 100vh; }
-    #annotationCanvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-    #annotationCanvas.active { pointer-events: auto; cursor: crosshair; }
-    .remote-pointer { position: absolute; z-index: 2; display: none; width: 18px; height: 18px; border: 2px solid #fff; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 2px #0008; transform: translate(-50%, -50%); pointer-events: none; }
-    .remote-pointer.active { display: block; }
-    .workspace.controls-hidden { grid-template-columns: minmax(0, 1fr); }
-    .workspace.controls-hidden .controls { display: none; }
-    .workspace.theater-mode { grid-template-columns: minmax(0, 1fr); }
-    .workspace.theater-mode .controls { display: none; }
-    .workspace.theater-mode .stage-toolbar { position: relative; z-index: 21; }
-    .screen-info { margin-right: auto; align-self: center; color: var(--muted); font-size: 11px; }
-    .toast { position: fixed; z-index: 50; left: 50%; bottom: 18px; max-width: calc(100% - 32px); padding: 10px 16px; color: var(--text); background: #243129; border: 1px solid var(--line); border-radius: 999px; box-shadow: var(--shadow); transform: translateX(-50%); animation: toast-in 200ms ease; }
-    .toast[hidden] { display: none; }
-    @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
-
-    @media (max-width: 720px) {
-      main { width: min(100% - 24px, 720px); padding-top: 18px; }
-      .workspace { grid-template-columns: 1fr; gap: 14px; }
-      .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-      .control-block { padding: 12px; }
-      .screen, .stage-shell { min-height: 220px; }
-      video, .stage-shell video { max-height: 55vh; }
-      .chat-block { grid-column: 1 / -1; }
-      .chat-log { max-height: 170px; }
-      .stage-shell.is-theater { inset: 5px; }
-      .stage-toolbar { justify-content: flex-start; }
-      .screen-info { flex-basis: 100%; order: 1; }
-    }
-
-    @media (max-width: 420px) { .controls { grid-template-columns: 1fr; } }
-  </style>
+  <link rel="stylesheet" href="/app.css">
 </head>
 <body>
-  <main>
-    <header>
-      <div class="brand"><span class="mark" aria-hidden="true"></span><h1>MinhaTela</h1></div>
+  <header class="top-bar">
+    <div class="brand"><span class="mark" aria-hidden="true"></span>MinhaTela</div>
+    <div class="top-actions">
+      <span id="roomPill" class="room-pill" hidden>Código:&nbsp;<strong id="roomPillCode"></strong>
+        <button id="copyPillButton" class="ghost" type="button" title="Copiar link da sala" aria-label="Copiar link da sala">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+        </button>
+      </span>
       <span class="eyebrow">WebRTC · P2P</span>
-    </header>
+    </div>
+  </header>
 
-    <section id="workspace" class="workspace" aria-label="Compartilhamento de tela">
-      <aside class="controls">
-        <section class="control-block">
-          <h2>Sessão</h2>
-          <label for="room">Código da sala</label>
-          <div class="field-row">
-            <div><input id="room" maxlength="40" autocomplete="off" spellcheck="false" aria-label="Código da sala"></div>
-            <button id="copyRoomButton" class="secondary" type="button" title="Copiar link da sala" aria-label="Copiar link da sala">Copiar link</button>
-          </div>
-          <label for="displayName" style="margin-top:10px">Seu nome</label>
-          <input id="displayName" class="name-input" maxlength="32" autocomplete="nickname" value="Participante">
-          <div class="actions">
-            <button id="shareButton" type="button">Compartilhar tela</button>
-            <button id="watchButton" class="secondary" type="button">Assistir</button>
-          </div>
-          <button id="stopButton" class="secondary" type="button" disabled style="width:100%; margin-top:8px">Encerrar sessão</button>
-          <div id="roomLink"></div>
-        </section>
+  <main id="lobby" class="lobby">
+    <section class="lobby-card" aria-label="Entrar em uma sessão">
+      <h2 class="lobby-title">Entre em uma sessão</h2>
+      <p class="lobby-hint">Compartilhe sua tela ou assista à transmissão de alguém.</p>
+      <div class="lobby-tile" aria-hidden="true">
+        <span id="lobbyInitial">P</span>
+        <span id="lobbyName" class="cam-badge">Participante</span>
+      </div>
+      <label for="displayName">Seu nome</label>
+      <input id="displayName" class="name-input" maxlength="32" autocomplete="nickname" value="Participante">
+      <label for="room">Código da sala</label>
+      <div class="field-row">
+        <input id="room" maxlength="40" autocomplete="off" spellcheck="false" aria-label="Código da sala">
+        <button id="copyRoomButton" class="ghost square" type="button" title="Copiar link da sala" aria-label="Copiar link da sala">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+        </button>
+      </div>
+      <div class="lobby-actions">
+        <button id="shareButton" class="btn-primary" type="button">Compartilhar tela</button>
+        <button id="watchButton" class="btn-outline" type="button">Assistir</button>
+      </div>
+      <p id="lobbyStatus" class="lobby-status" aria-live="polite">Pronto para iniciar.</p>
+    </section>
+  </main>
 
-        <section class="control-block">
-          <h2>Conexão</h2>
-          <div class="status-row"><span id="statusDot" class="status-dot" aria-hidden="true"></span><span id="status" aria-live="polite">Pronto para iniciar.</span></div>
-          <p id="connectionInfo" class="footnote">Mídia segue diretamente entre navegadores; servidor usado para sinalização e chat.</p>
-          <div class="small-status" id="connectionMetrics">Aguardando conexão.</div>
-          <p class="footnote">Atalhos: Alt+Shift+M microfone · T teatro · F tela cheia · C controles · Esc sai das ferramentas.</p>
-        </section>
+  <main id="meeting" class="meeting" hidden>
+    <div class="meet-layout">
+      <section class="stage-area" aria-label="Transmissão">
+        <div id="stageShell" class="stage-shell">
+          <div id="emptyState" class="empty"><strong>A transmissão aparecerá aqui</strong>Crie uma sala ou informe o código enviado pelo transmissor.</div>
+          <video id="video" playsinline controls hidden></video>
+          <canvas id="annotationCanvas" aria-label="Camada de ponteiro e marcação"></canvas>
+          <span id="remotePointer" class="remote-pointer" aria-hidden="true"></span>
+          <span id="stageBadge" class="stage-badge">Sem transmissão ativa</span>
+        </div>
+        <div id="cameraStrip" class="camera-strip" aria-label="Câmeras dos participantes"></div>
+      </section>
 
-        <section class="control-block">
-          <h2>Voz</h2>
-          <div class="voice-actions">
-            <button id="micButton" class="secondary mic-off" type="button" disabled aria-pressed="false" title="Alternar microfone (Alt+Shift+M)">Microfone desligado</button>
-            <select id="audioInput" aria-label="Dispositivo de entrada de áudio" disabled><option value="">Entrada padrão</option></select>
-          </div>
-          <p id="micStatus" class="footnote">Ative para solicitar permissão e entrar na conversa por voz.</p>
-        </section>
-
-        <section class="control-block">
-          <div class="section-title"><h2>Participantes</h2><span id="participantCount" class="count">0</span></div>
+      <aside id="sidePanel" class="side-panel" hidden aria-label="Painel de participantes e chat">
+        <div class="panel-head">
+          <button id="peopleTab" class="panel-tab active" type="button">Pessoas<span id="participantCount" class="tab-count">0</span></button>
+          <button id="chatTab" class="panel-tab" type="button">Chat</button>
+          <button id="panelClose" class="ctl small" type="button" title="Fechar painel" aria-label="Fechar painel">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+          </button>
+        </div>
+        <div id="peoplePane" class="panel-body">
           <ul id="participantList" class="participant-list" aria-live="polite"></ul>
-        </section>
-
-        <section id="chatBlock" class="control-block chat-block">
-          <div class="section-title"><h2>Chat</h2><button id="chatToggle" class="secondary" type="button" aria-expanded="true" aria-label="Minimizar chat">Minimizar</button></div>
+          <div class="panel-section">
+            <h3>Dispositivos</h3>
+            <label for="audioInput">Microfone</label>
+            <select id="audioInput" disabled><option value="">Entrada padrão</option></select>
+            <label for="videoInput">Câmera</label>
+            <select id="videoInput" disabled><option value="">Câmera padrão</option></select>
+          </div>
+        </div>
+        <div id="chatPane" class="panel-body" hidden>
           <div id="chatLog" class="chat-log" role="log" aria-live="polite" aria-relevant="additions"></div>
           <form id="chatForm" class="chat-form">
-            <button id="emojiButton" class="secondary" type="button" title="Inserir emoji" aria-label="Inserir emoji" aria-haspopup="true">😀</button>
+            <button id="emojiButton" class="ctl small" type="button" title="Inserir emoji" aria-label="Inserir emoji" aria-haspopup="true">😀</button>
             <div id="emojiMenu" class="emoji-menu" hidden>
               <button type="button" data-emoji="😀">😀</button>
               <button type="button" data-emoji="😂">😂</button>
@@ -284,1043 +88,76 @@
               <button type="button" data-emoji="🎮">🎮</button>
             </div>
             <input id="chatInput" maxlength="1000" autocomplete="off" placeholder="Mensagem..." aria-label="Mensagem">
-            <button type="submit" aria-label="Enviar mensagem">Enviar</button>
+            <button type="submit" class="ctl small" aria-label="Enviar mensagem" title="Enviar mensagem">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+            </button>
           </form>
-        </section>
-      </aside>
-
-      <div class="stage">
-        <div class="stage-toolbar" aria-label="Ferramentas da transmissão">
-          <span id="screenInfo" class="screen-info">Sem transmissão ativa</span>
-          <button id="pointerButton" class="secondary" type="button" aria-pressed="false" title="Ativar ponteiro remoto">Ponteiro</button>
-          <button id="drawButton" class="secondary" type="button" aria-pressed="false" title="Desenhar sobre a transmissão">Desenhar</button>
-          <button id="clearButton" class="secondary" type="button" title="Limpar marcações">Limpar</button>
-          <button id="controlsButton" class="secondary" type="button" aria-pressed="false" title="Minimizar controles (Alt+Shift+C)">Controles</button>
-          <button id="theaterButton" class="secondary" type="button" aria-pressed="false" title="Modo teatro (Alt+Shift+T)">Teatro</button>
-          <button id="fullscreenButton" class="secondary" type="button" title="Tela cheia (Alt+Shift+F)">Tela cheia</button>
         </div>
-      <div id="stageShell" class="stage-shell">
-        <div id="emptyState" class="empty"><strong>A transmissão aparecerá aqui</strong>Crie uma sala ou informe o código enviado pelo transmissor.</div>
-        <video id="video" playsinline controls hidden></video>
-        <canvas id="annotationCanvas" aria-label="Camada de ponteiro e marcação"></canvas>
-        <span id="remotePointer" class="remote-pointer" aria-hidden="true"></span>
+      </aside>
+    </div>
+
+    <footer class="control-bar" aria-label="Controles da sessão">
+      <div class="cb-left">
+        <span id="statusDot" class="status-dot" aria-hidden="true"></span>
+        <div>
+          <span id="status">Pronto para iniciar.</span>
+          <div id="connectionMetrics" class="small-status">Aguardando conexão.</div>
+        </div>
       </div>
+      <div class="cb-center">
+        <button id="micButton" class="ctl off" type="button" disabled aria-pressed="false" aria-label="Ligar microfone" title="Microfone (Alt+Shift+M)">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/>
+            <line class="slash" x1="4" y1="4" x2="20" y2="20" stroke="currentColor" stroke-width="2.4" />
+          </svg>
+        </button>
+        <button id="cameraButton" class="ctl off" type="button" aria-pressed="false" aria-label="Ligar câmera" title="Câmera (somente transmissor)">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+            <line class="slash" x1="4" y1="4" x2="20" y2="20" stroke="currentColor" stroke-width="2.4" />
+          </svg>
+        </button>
+        <button id="cameraOnlyButton" class="ctl" type="button" aria-pressed="false" aria-label="Só câmera, sem a tela" title="Só câmera (tirar a tela)">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5c0-1.1.9-2 2-2h2v2H5v2H3V5zm18 0v2h-2V5h-2V3h2c1.1 0 2 .9 2 2zM3 19v-2h2v2h2v2H5c-1.1 0-2-.9-2-2zm18 0c0 1.1-.9 2-2 2h-2v-2h2v-2h2v2zM12 12c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-1.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+        </button>
+        <span class="sep" aria-hidden="true"></span>
+        <button id="pointerButton" class="ctl" type="button" aria-pressed="false" title="Ativar ponteiro remoto" aria-label="Ponteiro remoto">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3 3 16.22l7.53 1.99L14.5 23z"/></svg>
+        </button>
+        <button id="drawButton" class="ctl" type="button" aria-pressed="false" title="Desenhar sobre a transmissão" aria-label="Desenhar">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+        </button>
+        <button id="clearButton" class="ctl" type="button" title="Limpar marcações" aria-label="Limpar marcações">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16.24 3.56l4.2 4.2c.78.78.78 2.05 0 2.83l-8.49 8.49c-.78.78-2.05.78-2.83 0l-4.2-4.2c-.78-.78-.78-2.05 0-2.83l8.49-8.49c.78-.78 2.05-.78 2.83 0zM3 21h18v-2H3v2z"/></svg>
+        </button>
+        <span class="sep" aria-hidden="true"></span>
+        <button id="chatButton" class="ctl" type="button" title="Chat" aria-label="Abrir chat">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+        </button>
+        <button id="peopleButton" class="ctl" type="button" title="Pessoas" aria-label="Abrir pessoas">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+        </button>
+        <span class="sep" aria-hidden="true"></span>
+        <button id="theaterButton" class="ctl" type="button" aria-pressed="false" title="Modo teatro (Alt+Shift+T)" aria-label="Modo teatro">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12h-2v3h-3v2h5v-5zM7 9h3V7H5v5h2V9zm14-6H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16.01H3V4.99h18v14.02z"/></svg>
+        </button>
+        <button id="fullscreenButton" class="ctl" type="button" title="Tela cheia (Alt+Shift+F)" aria-label="Tela cheia">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+        </button>
+        <button id="controlsButton" class="ctl" type="button" aria-pressed="false" title="Ocultar painéis (Alt+Shift+C)" aria-label="Ocultar painéis">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 4.27 4.28 6.55C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7z"/></svg>
+        </button>
       </div>
-    </section>
-    <div id="toast" class="toast" role="status" hidden></div>
+      <div class="cb-right">
+        <button id="stopButton" class="btn-leave" type="button" disabled title="Encerrar sessão">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08a.9956.9956 0 0 1-.29-.7c0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.7l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.1-.7-.28-.79-.73-1.68-1.36-2.66-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/></svg>
+          <span id="stopLabel">Encerrar</span>
+        </button>
+      </div>
+    </footer>
   </main>
 
-  <script>
-    'use strict';
-
-    const $ = (selector) => document.querySelector(selector);
-    const roomInput = $('#room');
-    const displayNameInput = $('#displayName');
-    const shareButton = $('#shareButton');
-    const watchButton = $('#watchButton');
-    const stopButton = $('#stopButton');
-    const micButton = $('#micButton');
-    const audioInput = $('#audioInput');
-    const statusText = $('#status');
-    const statusDot = $('#statusDot');
-    const roomLink = $('#roomLink');
-    const video = $('#video');
-    const emptyState = $('#emptyState');
-    const workspace = $('#workspace');
-    const stageShell = $('#stageShell');
-    const annotationCanvas = $('#annotationCanvas');
-    const annotationContext = annotationCanvas.getContext('2d');
-    const remotePointer = $('#remotePointer');
-    const participantList = $('#participantList');
-    const participantCount = $('#participantCount');
-    const chatBlock = $('#chatBlock');
-    const chatLog = $('#chatLog');
-    const chatInput = $('#chatInput');
-    const peers = new Map();
-    const participants = new Map();
-    let socket;
-    let localStream;
-    let microphoneStream;
-    let currentRole;
-    let roomCode;
-    let localPeerId;
-    let localMuted = true;
-    let shouldReconnect = false;
-    let intentionalClose = false;
-    let reconnectAttempt = 0;
-    let reconnectTimer;
-    let socketGeneration = 0;
-    let metricsTimer;
-    let speakingTimer;
-    let audioContext;
-    const localAudioMonitor = {};
-    let drawing = false;
-    let drawPoints = [];
-    let pointerEnabled = false;
-    let drawEnabled = false;
-    let controlsHidden = false;
-    let theaterEnabled = false;
-    let lastPointerSent = 0;
-    let toastTimer;
-    let unreadChat = 0;
-
-    const rtcConfig = {
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-      bundlePolicy: 'max-bundle'
-    };
-
-    roomInput.value = crypto.randomUUID().replaceAll('-', '').slice(0, 10).toUpperCase();
-    const linkedRoom = new URLSearchParams(location.search).get('sala');
-    if (linkedRoom && /^[a-zA-Z0-9_-]{4,40}$/.test(linkedRoom)) {
-      roomInput.value = linkedRoom.toUpperCase();
-      setStatus('Código carregado do link. Clique em Assistir para entrar.');
-    }
-    const storedName = localStorage.getItem('minhatela-name');
-    if (storedName) displayNameInput.value = storedName;
-
-    function setStatus(message, state = '') {
-      statusText.textContent = message;
-      statusDot.className = `status-dot ${state}`;
-    }
-
-    function showToast(message) {
-      const toast = $('#toast');
-      toast.textContent = message;
-      toast.hidden = false;
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => { toast.hidden = true; }, 2300);
-    }
-
-    function validRoom() {
-      const room = roomInput.value.trim();
-      if (!/^[a-zA-Z0-9_-]{4,40}$/.test(room)) {
-        setStatus('Use um código de 4 a 40 letras, números, hífen ou sublinhado.', 'error');
-        return null;
-      }
-      return room;
-    }
-
-    function sendSignal(message) {
-      if (socket?.readyState !== WebSocket.OPEN) return false;
-      socket.send(JSON.stringify(message));
-      return true;
-    }
-
-    function setMediaStatus(text) {
-      $('#screenInfo').textContent = text;
-    }
-
-    function updateLocalParticipant() {
-      participants.set(localPeerId, {
-        peerId: localPeerId,
-        name: displayNameInput.value.trim() || 'Participante',
-        role: currentRole,
-        muted: localMuted,
-        local: true
-      });
-      renderParticipants();
-    }
-
-    function renderParticipants() {
-      const entries = [...participants.values()];
-      participantCount.textContent = String(entries.length);
-      participantList.replaceChildren();
-
-      for (const participant of entries) {
-        const row = document.createElement('li');
-        row.className = 'participant';
-        row.dataset.peerId = participant.peerId;
-        const dot = document.createElement('span');
-        dot.className = `participant-dot${participant.localMuted || participant.muted ? ' offline' : ''}`;
-        dot.dataset.speakingDot = 'true';
-        const name = document.createElement('span');
-        name.className = 'participant-name';
-        name.textContent = participant.local ? `${participant.name} (você)` : participant.name;
-        const meta = document.createElement('span');
-        meta.className = 'participant-meta';
-        const roleText = participant.role === 'host' ? 'Transmitindo' : 'Espectador';
-        const micText = participant.muted ? ' · Mic desligado' : ' · Mic ligado';
-        meta.textContent = `${roleText}${micText}`;
-        row.append(dot, name, meta);
-
-        if (!participant.local) {
-          const peer = peers.get(participant.peerId);
-          const audio = peer?.audioElement;
-          if (audio) row.append(audio);
-          const listen = document.createElement('button');
-          listen.type = 'button';
-          listen.className = 'secondary listen-button';
-          listen.textContent = audio?.srcObject ? (peer.listening ? 'Ouvindo' : 'Ouvir') : 'Sem voz';
-          listen.disabled = !audio?.srcObject;
-          listen.setAttribute('aria-label', `Ativar áudio de ${participant.name}`);
-          listen.addEventListener('click', () => audio?.play().then(() => { peer.listening = true; listen.textContent = 'Ouvindo'; }).catch(() => showToast('Áudio ainda não disponível.')));
-          row.append(listen);
-          const volume = document.createElement('input');
-          volume.className = 'volume-control';
-          volume.type = 'range';
-          volume.min = '0';
-          volume.max = '1';
-          volume.step = '0.05';
-          volume.value = String(audio?.volume ?? 1);
-          volume.setAttribute('aria-label', `Volume de ${participant.name}`);
-          volume.addEventListener('input', () => { if (audio) audio.volume = Number(volume.value); });
-          row.append(volume);
-        }
-        participantList.append(row);
-      }
-    }
-
-    function updateParticipant(peerId, changes) {
-      const participant = participants.get(peerId);
-      if (!participant) return;
-      Object.assign(participant, changes);
-      renderParticipants();
-    }
-
-    function setParticipantSpeaking(peerId, speaking) {
-      for (const dot of participantList.querySelectorAll('[data-speaking-dot]')) {
-        if (dot.parentElement.dataset.peerId === peerId) dot.classList.toggle('speaking', speaking);
-      }
-    }
-
-    function validPeerDescriptor(peer) {
-      return peer && typeof peer.peerId === 'string' && peer.peerId.length <= 64 &&
-        typeof peer.name === 'string' && ['host', 'viewer'].includes(peer.role);
-    }
-
-    function registerPeer(peer) {
-      if (!validPeerDescriptor(peer) || peer.peerId === localPeerId) return;
-      const existing = participants.get(peer.peerId);
-      participants.set(peer.peerId, {
-        peerId: peer.peerId,
-        name: peer.name.slice(0, 32),
-        role: peer.role,
-        muted: typeof peer.muted === 'boolean' ? peer.muted : existing?.muted ?? true
-      });
-      renderParticipants();
-    }
-
-    function closePeer(peerId) {
-      const state = peers.get(peerId);
-      if (state) {
-        clearInterval(state.speakingTimer);
-        state.audioElement?.pause();
-        if (state.audioElement) state.audioElement.srcObject = null;
-        state.audioSource?.disconnect();
-        state.pc.close();
-        peers.delete(peerId);
-      }
-      const departed = participants.get(peerId);
-      participants.delete(peerId);
-      renderParticipants();
-      if (departed?.role === 'host' && currentRole === 'viewer') {
-        video.srcObject = null;
-        video.hidden = true;
-        emptyState.hidden = false;
-        setMediaStatus('Transmissor desconectado');
-        setStatus('O transmissor saiu; aguardando uma possível reconexão.', 'error');
-      }
-    }
-
-    function closeAllPeers() {
-      for (const peerId of [...peers.keys()]) closePeer(peerId);
-      participants.clear();
-      if (localPeerId) updateLocalParticipant();
-    }
-
-    function isOfferer(peerId) {
-      const peer = participants.get(peerId);
-      if (currentRole === 'host' && peer?.role === 'viewer') return true;
-      if (currentRole === 'viewer' && peer?.role === 'host') return false;
-      return Boolean(localPeerId && localPeerId < peerId);
-    }
-
-    function createPeer(peerId) {
-      if (peers.has(peerId)) return peers.get(peerId);
-      const pc = new RTCPeerConnection(rtcConfig);
-      const audioTransceiver = pc.addTransceiver('audio', { direction: 'sendrecv' });
-      const state = {
-        pc,
-        audioSender: audioTransceiver.sender,
-        pendingCandidates: [],
-        makingOffer: false,
-        offerSent: false,
-        restarts: 0,
-        audioElement: new Audio(),
-        analyser: null,
-        audioSource: null,
-        speakingTimer: null,
-        listening: false,
-        videoSender: null
-      };
-      state.audioElement.autoplay = true;
-      state.audioElement.playsInline = true;
-      state.audioElement.volume = 1;
-      peers.set(peerId, state);
-
-      if (currentRole === 'host' && localStream) {
-        for (const track of localStream.getVideoTracks()) state.videoSender = pc.addTrack(track, localStream);
-      }
-      if (microphoneStream?.getAudioTracks()[0]) {
-        state.audioSender.replaceTrack(microphoneStream.getAudioTracks()[0]).catch(console.error);
-      }
-
-      pc.onicecandidate = ({ candidate }) => {
-        if (candidate) sendSignal({ type: 'candidate', target: peerId, candidate });
-      };
-
-      pc.ontrack = ({ track }) => {
-        if (track.kind === 'video') {
-          if (currentRole === 'viewer') {
-            video.srcObject = new MediaStream([track]);
-            video.muted = false;
-            video.hidden = false;
-            emptyState.hidden = true;
-            video.play().catch(() => showToast('Clique no player para iniciar a transmissão.'));
-            setMediaStatus('Recebendo tela');
-          }
-          return;
-        }
-
-        if (track.kind === 'audio') {
-          const remoteStream = new MediaStream([track]);
-          state.audioElement.srcObject = remoteStream;
-          state.audioElement.play().catch(() => showToast('Interaja com a página para liberar o áudio da voz.'));
-          createSpeakingMeter(peerId, state, remoteStream);
-          track.addEventListener('ended', () => setParticipantSpeaking(peerId, false), { once: true });
-          renderParticipants();
-        }
-      };
-
-      pc.onconnectionstatechange = () => {
-        if (pc.connectionState === 'connected') {
-          $('#connectionMetrics').textContent = 'P2P conectado';
-          $('#connectionInfo').textContent = 'Áudio e vídeo seguem diretamente entre navegadores.';
-        } else if (pc.connectionState === 'failed') {
-          restartPeer(peerId, state);
-        } else if (pc.connectionState === 'disconnected') {
-          $('#connectionMetrics').textContent = 'Conexão instável; tentando recuperar...';
-        }
-      };
-
-      return state;
-    }
-
-    async function createSpeakingMeter(peerId, state, stream) {
-      try {
-        audioContext ||= new AudioContext();
-        if (audioContext.state === 'suspended') await audioContext.resume();
-        state.audioSource?.disconnect();
-        state.audioSource = audioContext.createMediaStreamSource(stream);
-        state.analyser = audioContext.createAnalyser();
-        state.analyser.fftSize = 256;
-        state.audioSource.connect(state.analyser);
-        const samples = new Uint8Array(state.analyser.fftSize);
-        clearInterval(state.speakingTimer);
-        state.speakingTimer = setInterval(() => {
-          if (!state.analyser || (peerId !== localPeerId && !peers.has(peerId))) return;
-          if (peerId === localPeerId && localMuted) { setParticipantSpeaking(peerId, false); return; }
-          state.analyser.getByteTimeDomainData(samples);
-          let power = 0;
-          for (const sample of samples) power += (sample - 128) ** 2;
-          setParticipantSpeaking(peerId, Math.sqrt(power / samples.length) > 5.5);
-        }, 180);
-      } catch (error) {
-        console.warn('Indicador de voz indisponível:', error);
-      }
-    }
-
-    async function initiatePeer(peerId, state) {
-      if (state.offerSent || state.makingOffer || !isOfferer(peerId)) return;
-      state.makingOffer = true;
-      try {
-        const offer = await state.pc.createOffer();
-        await state.pc.setLocalDescription(offer);
-        sendSignal({ type: 'offer', target: peerId, sdp: state.pc.localDescription });
-        state.offerSent = true;
-      } finally {
-        state.makingOffer = false;
-      }
-    }
-
-    async function flushCandidates(state) {
-      for (const candidate of state.pendingCandidates) await state.pc.addIceCandidate(candidate);
-      state.pendingCandidates.length = 0;
-    }
-
-    async function restartPeer(peerId, state) {
-      if (!isOfferer(peerId) || state.restarts >= 2 || intentionalClose) {
-        $('#connectionMetrics').textContent = 'P2P indisponível; confira a rede ou a necessidade de TURN.';
-        return;
-      }
-      state.restarts += 1;
-      state.offerSent = false;
-      try {
-        state.pc.restartIce();
-        const offer = await state.pc.createOffer({ iceRestart: true });
-        await state.pc.setLocalDescription(offer);
-        sendSignal({ type: 'offer', target: peerId, sdp: state.pc.localDescription });
-        state.offerSent = true;
-      } catch (error) {
-        console.warn('Falha ao reiniciar ICE:', error);
-      }
-    }
-
-    async function handleSignal(message) {
-      if (message.type === 'peer-joined') {
-        if (!validPeerDescriptor(message.peer)) return;
-        registerPeer(message.peer);
-        const state = createPeer(message.peer.peerId);
-        if (isOfferer(message.peer.peerId)) await initiatePeer(message.peer.peerId, state);
-        return;
-      }
-
-      if (message.type === 'offer' && typeof message.from === 'string' && message.sdp?.type === 'offer') {
-        let state = peers.get(message.from);
-        if (!state) state = createPeer(message.from);
-        await state.pc.setRemoteDescription(message.sdp);
-        await flushCandidates(state);
-        const answer = await state.pc.createAnswer();
-        await state.pc.setLocalDescription(answer);
-        sendSignal({ type: 'answer', target: message.from, sdp: state.pc.localDescription });
-        return;
-      }
-
-      if (message.type === 'answer' && typeof message.from === 'string' && message.sdp?.type === 'answer') {
-        const state = peers.get(message.from);
-        if (!state) return;
-        await state.pc.setRemoteDescription(message.sdp);
-        await flushCandidates(state);
-        return;
-      }
-
-      if (message.type === 'candidate' && typeof message.from === 'string') {
-        const state = peers.get(message.from);
-        if (!state) return;
-        if (state.pc.remoteDescription) await state.pc.addIceCandidate(message.candidate);
-        else state.pendingCandidates.push(message.candidate);
-        return;
-      }
-
-      if (message.type === 'chat' && typeof message.text === 'string' && message.text.length <= 1000 && typeof message.name === 'string' && typeof message.from === 'string') {
-        appendChatMessage(message, message.from === localPeerId);
-        return;
-      }
-
-      if (message.type === 'peer-state' && typeof message.peerId === 'string' && typeof message.muted === 'boolean') {
-        updateParticipant(message.peerId, { muted: message.muted });
-        if (message.muted) setParticipantSpeaking(message.peerId, false);
-        return;
-      }
-
-      if (message.type === 'peer-left' && typeof message.peerId === 'string') {
-        closePeer(message.peerId);
-        if (participants.size <= 1) $('#connectionMetrics').textContent = 'Aguardando participantes.';
-        return;
-      }
-
-      if (message.type === 'pointer' && message.point && Number.isFinite(message.point.x) && Number.isFinite(message.point.y)) {
-        remotePointer.style.left = `${Math.max(0, Math.min(1, message.point.x)) * 100}%`;
-        remotePointer.style.top = `${Math.max(0, Math.min(1, message.point.y)) * 100}%`;
-        remotePointer.classList.toggle('active', message.active === true);
-        return;
-      }
-
-      if (message.type === 'draw' && Array.isArray(message.points) && message.points.length <= 80 && /^#[0-9a-fA-F]{6}$/.test(message.color)) {
-        drawStroke(message.points, message.color);
-        return;
-      }
-
-      if (message.type === 'clear-draw') clearCanvas();
-    }
-
-    function createSocketConnection(reconnecting = false) {
-      return new Promise((resolve, reject) => {
-        const generation = ++socketGeneration;
-        const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const nextSocket = new WebSocket(`${protocol}//${location.host}/signal`);
-        socket = nextSocket;
-        let settled = false;
-        const timeout = setTimeout(() => {
-          if (!settled) {
-            settled = true;
-            nextSocket.close();
-            reject(new Error('Tempo esgotado ao conectar ao servidor de sinalização.'));
-          }
-        }, 10000);
-
-        nextSocket.addEventListener('open', () => {
-          if (generation !== socketGeneration) return;
-          nextSocket.send(JSON.stringify({
-            type: 'join',
-            role: currentRole,
-            room: roomCode,
-            name: displayNameInput.value.trim().slice(0, 32) || 'Participante',
-            muted: localMuted
-          }));
-        });
-
-        nextSocket.addEventListener('message', async (event) => {
-          if (generation !== socketGeneration) return;
-          let message;
-          try { message = JSON.parse(event.data); }
-          catch { setStatus('O servidor enviou uma mensagem inválida.', 'error'); return; }
-
-          if (!message || typeof message !== 'object') return;
-          if (message.type === 'joined') {
-            clearTimeout(timeout);
-            settled = true;
-            localPeerId = message.peerId;
-            $('#micButton').disabled = false;
-            $('#audioInput').disabled = false;
-            roomInput.disabled = true;
-            displayNameInput.disabled = true;
-            shareButton.disabled = true;
-            watchButton.disabled = true;
-            stopButton.disabled = false;
-            roomLink.textContent = `${message.temporary ? 'Sala temporária · ' : ''}Código: ${roomCode}`;
-            participants.clear();
-            for (const peer of Array.isArray(message.peers) ? message.peers : []) registerPeer(peer);
-            updateLocalParticipant();
-            for (const peer of participants.values()) {
-              if (peer.local) continue;
-              const state = createPeer(peer.peerId);
-              if (isOfferer(peer.peerId)) await initiatePeer(peer.peerId, state);
-            }
-            refreshAudioInputs();
-            reconnectAttempt = 0;
-            shouldReconnect = true;
-            const hasDisplayAudio = localStream?.getAudioTracks().some((track) => track.readyState === 'live');
-            const connectedStatus = currentRole !== 'host'
-              ? (reconnecting ? 'Reconectado à sala.' : 'Na sala; aguardando a transmissão.')
-              : hasDisplayAudio
-                ? 'Tela compartilhada com áudio de captura; aguardando amigos.'
-                : 'Tela compartilhada sem áudio de sistema. Firefox não captura esse áudio; tente Chrome/Edge.';
-            setStatus(connectedStatus, 'live');
-            $('#connectionMetrics').textContent = `${participants.size} participante(s) · P2P conectando`;
-            if (currentRole === 'host') setMediaStatus('Tela compartilhada');
-            else setMediaStatus('Aguardando transmissão');
-            startMetrics();
-            resolve();
-            return;
-          }
-
-          if (message.type === 'error') {
-            if (!settled) {
-              clearTimeout(timeout);
-              settled = true;
-              reject(new Error(message.message || 'Não foi possível entrar na sala.'));
-            } else {
-              showToast(message.message || 'Erro na sala.');
-            }
-            return;
-          }
-
-          try { await handleSignal(message); }
-          catch (error) {
-            console.error(error);
-            $('#connectionMetrics').textContent = `Falha WebRTC: ${error.message}`;
-          }
-        });
-
-        nextSocket.addEventListener('close', () => {
-          clearTimeout(timeout);
-          if (generation !== socketGeneration) return;
-          if (!settled) {
-            settled = true;
-            reject(new Error('Conexão com o servidor de sinalização encerrada.'));
-          }
-          if (shouldReconnect && !intentionalClose) scheduleReconnect();
-        });
-
-        nextSocket.addEventListener('error', () => {
-          if (!settled) {
-            clearTimeout(timeout);
-            settled = true;
-            reject(new Error('Não foi possível conectar ao servidor. Verifique a rede e tente novamente.'));
-          }
-        });
-      });
-    }
-
-    function scheduleReconnect() {
-      if (reconnectTimer || intentionalClose) return;
-      if (reconnectAttempt >= 8) {
-        shouldReconnect = false;
-        setStatus('Desconectado. Use Retomar para entrar novamente na mesma sala.', 'error');
-        stopButton.textContent = 'Retomar sessão';
-        stopButton.disabled = false;
-        $('#connectionMetrics').textContent = 'Reconexão automática esgotada.';
-        return;
-      }
-      const delay = Math.min(1000 * (2 ** reconnectAttempt), 20000);
-      reconnectAttempt += 1;
-      setStatus(`Conexão perdida; tentando novamente em ${Math.ceil(delay / 1000)} s...`, 'error');
-      $('#connectionMetrics').textContent = 'Reconectando ao servidor de sinalização...';
-      closeAllPeers();
-      reconnectTimer = setTimeout(async () => {
-        reconnectTimer = null;
-        if (intentionalClose || !roomCode) return;
-        try { await createSocketConnection(true); }
-        catch (error) {
-          console.warn(error);
-          scheduleReconnect();
-        }
-      }, delay);
-    }
-
-    async function connect(role, room) {
-      currentRole = role;
-      roomCode = room;
-      shouldReconnect = true;
-      intentionalClose = false;
-      reconnectAttempt = 0;
-      setStatus('Conectando à sala...');
-      return createSocketConnection();
-    }
-
-    function appendChatMessage(message, own = false) {
-      if (chatBlock.classList.contains('collapsed')) {
-        unreadChat += 1;
-        $('#chatToggle').textContent = `Expandir (${unreadChat})`;
-      }
-      const article = document.createElement('article');
-      article.className = 'chat-message';
-      if (own) article.classList.add('own');
-      const header = document.createElement('header');
-      const name = document.createElement('strong');
-      name.textContent = message.name.slice(0, 32);
-      const time = document.createElement('time');
-      time.dateTime = new Date(message.timestamp).toISOString();
-      time.textContent = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(message.timestamp);
-      const copy = document.createElement('button');
-      copy.type = 'button';
-      copy.className = 'secondary';
-      copy.textContent = 'Copiar';
-      copy.setAttribute('aria-label', 'Copiar mensagem');
-      copy.addEventListener('click', () => copyText(message.text));
-      const body = document.createElement('p');
-      body.textContent = message.text;
-      header.append(name, time, copy);
-      article.append(header, body);
-      chatLog.append(article);
-      while (chatLog.children.length > 150) chatLog.firstElementChild.remove();
-      chatLog.scrollTop = chatLog.scrollHeight;
-    }
-
-    async function copyText(value) {
-      try {
-        await navigator.clipboard.writeText(value);
-        showToast('Copiado.');
-      } catch {
-        const temporary = document.createElement('textarea');
-        temporary.value = value;
-        temporary.style.position = 'fixed';
-        temporary.style.opacity = '0';
-        document.body.append(temporary);
-        temporary.select();
-        document.execCommand('copy');
-        temporary.remove();
-        showToast('Copiado.');
-      }
-    }
-
-    async function refreshAudioInputs() {
-      if (!navigator.mediaDevices?.enumerateDevices) return;
-      try {
-        const selected = audioInput.value;
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const inputs = devices.filter((device) => device.kind === 'audioinput');
-        audioInput.replaceChildren();
-        for (const [index, device] of inputs.entries()) {
-          const option = document.createElement('option');
-          option.value = device.deviceId;
-          option.textContent = device.label || `Microfone ${index + 1}`;
-          audioInput.append(option);
-        }
-        if (!inputs.length) {
-          const option = document.createElement('option');
-          option.value = '';
-          option.textContent = 'Nenhum microfone encontrado';
-          audioInput.append(option);
-        } else if (inputs.some((device) => device.deviceId === selected)) {
-          audioInput.value = selected;
-        }
-      } catch (error) {
-        console.warn('Não foi possível listar microfones:', error);
-      }
-    }
-
-    async function acquireMicrophone() {
-      if (!navigator.mediaDevices?.getUserMedia) throw new Error('Este navegador não permite acesso ao microfone nesta origem. Use HTTPS.');
-      const audio = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
-      if (audioInput.value) audio.deviceId = { exact: audioInput.value };
-      try {
-        microphoneStream = await navigator.mediaDevices.getUserMedia({ audio, video: false });
-      } catch (error) {
-        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') throw new Error('Permissão de microfone negada. Autorize o microfone nas configurações do navegador.');
-        if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') throw new Error('Nenhum microfone foi encontrado. Conecte um dispositivo e tente novamente.');
-        throw error;
-      }
-      const track = microphoneStream.getAudioTracks()[0];
-      if (!track) throw new Error('O navegador não retornou uma faixa de microfone.');
-      track.enabled = true;
-      track.addEventListener('ended', () => setMicrophoneEnabled(false), { once: true });
-      await refreshAudioInputs();
-      if (audioContext?.state === 'suspended') await audioContext.resume();
-      return track;
-    }
-
-    async function setMicrophoneEnabled(enabled) {
-      if (enabled && !microphoneStream) {
-        micButton.disabled = true;
-        $('#micStatus').textContent = 'Solicitando permissão para o microfone...';
-        try { await acquireMicrophone(); }
-        catch (error) {
-          $('#micStatus').textContent = error.message;
-          showToast(error.message);
-          micButton.disabled = !currentRole;
-          return;
-        }
-      }
-      localMuted = !enabled;
-      for (const track of microphoneStream?.getAudioTracks() || []) track.enabled = enabled;
-      await Promise.all([...peers.values()].map((state) => state.audioSender.replaceTrack(enabled ? microphoneStream?.getAudioTracks()[0] || null : null).catch((error) => console.warn('Falha ao alternar microfone:', error))));
-      if (enabled) await createSpeakingMeter(localPeerId, localAudioMonitor, microphoneStream);
-      else {
-        clearInterval(localAudioMonitor.speakingTimer);
-        setParticipantSpeaking(localPeerId, false);
-      }
-      micButton.textContent = enabled ? 'Microfone ligado' : 'Microfone desligado';
-      micButton.classList.toggle('mic-off', !enabled);
-      micButton.setAttribute('aria-pressed', String(enabled));
-      $('#micStatus').textContent = enabled ? 'Seu microfone está ativo nesta sala.' : 'Microfone desligado.';
-      updateLocalParticipant();
-      sendSignal({ type: 'state', muted: localMuted });
-    }
-
-    async function replaceMicrophone() {
-      if (!microphoneStream || localMuted) return;
-      try {
-        const oldStream = microphoneStream;
-        await acquireMicrophone();
-        const nextTrack = microphoneStream.getAudioTracks()[0];
-        await Promise.all([...peers.values()].map((state) => state.audioSender.replaceTrack(nextTrack)));
-        for (const track of oldStream.getTracks()) track.stop();
-        if (!localMuted) await createSpeakingMeter(localPeerId, localAudioMonitor, microphoneStream);
-      } catch (error) {
-        $('#micStatus').textContent = error.message;
-        showToast(error.message);
-      }
-    }
-
-    function resizeCanvas() {
-      const bounds = stageShell.getBoundingClientRect();
-      const scale = window.devicePixelRatio || 1;
-      annotationCanvas.width = Math.max(1, Math.round(bounds.width * scale));
-      annotationCanvas.height = Math.max(1, Math.round(bounds.height * scale));
-      annotationContext.setTransform(scale, 0, 0, scale, 0, 0);
-    }
-
-    function drawStroke(points, color = '#a7e3b4') {
-      if (!Array.isArray(points) || points.length < 2) return;
-      const width = stageShell.clientWidth;
-      const height = stageShell.clientHeight;
-      annotationContext.strokeStyle = color;
-      annotationContext.lineWidth = 3;
-      annotationContext.lineCap = 'round';
-      annotationContext.lineJoin = 'round';
-      annotationContext.beginPath();
-      annotationContext.moveTo(points[0].x * width, points[0].y * height);
-      for (const point of points.slice(1)) annotationContext.lineTo(point.x * width, point.y * height);
-      annotationContext.stroke();
-    }
-
-    function clearCanvas() {
-      annotationContext.clearRect(0, 0, stageShell.clientWidth, stageShell.clientHeight);
-    }
-
-    function pointerPoint(event) {
-      const bounds = stageShell.getBoundingClientRect();
-      return {
-        x: Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width)),
-        y: Math.max(0, Math.min(1, (event.clientY - bounds.top) / bounds.height))
-      };
-    }
-
-    function setTools(pointer, draw) {
-      pointerEnabled = pointer;
-      drawEnabled = draw;
-      $('#pointerButton').setAttribute('aria-pressed', String(pointer));
-      $('#drawButton').setAttribute('aria-pressed', String(draw));
-      annotationCanvas.classList.toggle('active', draw);
-    }
-
-    async function updateConnectionMetrics() {
-      const results = await Promise.all([...peers.entries()].map(async ([peerId, state]) => {
-        try {
-          const stats = await state.pc.getStats();
-          let rtt = null;
-          let loss = 0;
-          for (const report of stats.values()) {
-            if (report.type === 'candidate-pair' && report.state === 'succeeded' && report.nominated && Number.isFinite(report.currentRoundTripTime)) rtt = report.currentRoundTripTime;
-            if (report.type === 'remote-inbound-rtp' && report.kind === 'video' && report.packetsReceived + report.packetsLost > 0) loss = report.packetsLost / (report.packetsReceived + report.packetsLost);
-          }
-          if (currentRole === 'host' && state.videoSender) {
-            const parameters = state.videoSender.getParameters();
-            if (parameters.encodings?.length) {
-              parameters.encodings[0].maxBitrate = rtt > 0.35 || loss > 0.08 ? 900000 : rtt > 0.18 || loss > 0.03 ? 1600000 : 2500000;
-              await state.videoSender.setParameters(parameters).catch(() => {});
-            }
-          }
-          return { peerId, rtt, loss };
-        } catch { return null; }
-      }));
-      const valid = results.filter((result) => result && result.rtt !== null);
-      if (valid.length) {
-        const average = valid.reduce((sum, result) => sum + result.rtt, 0) / valid.length;
-        const worstLoss = Math.max(...valid.map((result) => result.loss));
-        const quality = average < 0.15 && worstLoss < 0.03 ? 'Boa' : average < 0.35 && worstLoss < 0.08 ? 'Regular' : 'Instável';
-        $('#connectionMetrics').textContent = `${participants.size} participante(s) · RTT ~${Math.round(average * 1000)} ms · ${quality}`;
-      }
-    }
-
-    function startMetrics() {
-      clearInterval(metricsTimer);
-      metricsTimer = setInterval(updateConnectionMetrics, 5000);
-      updateConnectionMetrics();
-    }
-
-    function stopSession() {
-      if (currentRole && (!shouldReconnect || $('#stopButton').textContent === 'Retomar sessão')) {
-        stopButton.textContent = 'Encerrar sessão';
-        reconnectAttempt = 0;
-        shouldReconnect = true;
-        intentionalClose = false;
-        clearTimeout(reconnectTimer);
-        reconnectTimer = null;
-        setStatus('Retomando conexão à sala...');
-        createSocketConnection(true).catch((error) => {
-          setStatus(error.message, 'error');
-          scheduleReconnect();
-        });
-        return;
-      }
-
-      intentionalClose = true;
-      shouldReconnect = false;
-      ++socketGeneration;
-      clearTimeout(reconnectTimer);
-      clearInterval(metricsTimer);
-      clearTimeout(toastTimer);
-      $('#toast').hidden = true;
-      if (socket && socket.readyState < WebSocket.CLOSING) socket.close(1000, 'Sessão encerrada');
-      closeAllPeers();
-      if (microphoneStream) for (const track of microphoneStream.getTracks()) track.stop();
-      clearInterval(localAudioMonitor.speakingTimer);
-      microphoneStream = null;
-      if (localStream) for (const track of localStream.getTracks()) track.stop();
-      localStream = null;
-      if (audioContext) { audioContext.close().catch(() => {}); audioContext = null; }
-      video.srcObject = null;
-      video.muted = false;
-      video.hidden = true;
-      emptyState.hidden = false;
-      roomLink.textContent = '';
-      currentRole = null;
-      roomCode = null;
-      localPeerId = null;
-      participants.clear();
-      localMuted = true;
-      roomInput.disabled = false;
-      displayNameInput.disabled = false;
-      shareButton.disabled = false;
-      watchButton.disabled = false;
-      micButton.disabled = true;
-      audioInput.disabled = true;
-      stopButton.disabled = true;
-      stopButton.textContent = 'Encerrar sessão';
-      micButton.textContent = 'Microfone desligado';
-      micButton.classList.add('mic-off');
-      micButton.setAttribute('aria-pressed', 'false');
-      $('#micStatus').textContent = 'Ative para solicitar permissão e entrar na conversa por voz.';
-      chatLog.replaceChildren();
-      clearCanvas();
-      setTools(false, false);
-      setMediaStatus('Sem transmissão ativa');
-      $('#connectionMetrics').textContent = 'Aguardando conexão.';
-      setStatus('Sessão encerrada.');
-      renderParticipants();
-    }
-
-    async function beginSession(role) {
-      const room = validRoom();
-      if (!room) return;
-      localStorage.setItem('minhatela-name', displayNameInput.value.trim().slice(0, 32));
-      shareButton.disabled = true;
-      watchButton.disabled = true;
-      try {
-        if (role === 'host') {
-          if (!navigator.mediaDevices?.getDisplayMedia) throw new Error('Captura não suportada neste navegador. Use Chrome/Edge desktop em HTTPS ou localhost.');
-          setStatus('Selecione a tela ou janela para compartilhar.');
-          localStream = await navigator.mediaDevices.getDisplayMedia({
-            video: { frameRate: { ideal: 60, max: 60 } },
-            audio: true
-          });
-          const videoTrack = localStream.getVideoTracks()[0];
-          if (!videoTrack) throw new Error('A captura não forneceu uma faixa de vídeo.');
-          videoTrack.addEventListener('ended', stopSession, { once: true });
-          video.srcObject = localStream;
-          video.muted = true;
-          video.hidden = false;
-          emptyState.hidden = true;
-          video.play().catch(() => showToast('A prévia local não pôde iniciar a reprodução.'));
-          setMediaStatus('Prévia da tela ativa');
-        }
-        await connect(role, room);
-      } catch (error) {
-        shouldReconnect = false;
-        intentionalClose = true;
-        if (socket && socket.readyState < WebSocket.CLOSING) socket.close();
-        if (localStream) for (const track of localStream.getTracks()) track.stop();
-        localStream = null;
-        video.srcObject = null;
-        video.hidden = true;
-        emptyState.hidden = false;
-        shareButton.disabled = false;
-        watchButton.disabled = false;
-        const message = error.name === 'NotAllowedError' ? 'Captura cancelada ou permissão negada.' : error.name === 'NotSupportedError' ? 'Este ambiente não suporta captura de tela. Use Chrome/Edge desktop.' : error.message;
-        setStatus(message, 'error');
-      }
-    }
-
-    shareButton.addEventListener('click', () => beginSession('host'));
-    watchButton.addEventListener('click', () => beginSession('viewer'));
-    stopButton.addEventListener('click', stopSession);
-    micButton.addEventListener('click', () => setMicrophoneEnabled(localMuted ? true : false));
-    audioInput.addEventListener('change', replaceMicrophone);
-    navigator.mediaDevices?.addEventListener?.('devicechange', refreshAudioInputs);
-
-    $('#chatForm').addEventListener('submit', (event) => {
-      event.preventDefault();
-      const text = chatInput.value.trim();
-      if (!text || text.length > 1000) return;
-      if (!sendSignal({ type: 'chat', text })) { showToast('Conecte-se à sala para enviar mensagens.'); return; }
-      chatInput.value = '';
-    });
-
-    const emojiMenu = $('#emojiMenu');
-    $('#emojiButton').addEventListener('click', () => { emojiMenu.hidden = !emojiMenu.hidden; });
-    emojiMenu.addEventListener('click', (event) => {
-      const emoji = event.target.closest('button')?.dataset.emoji;
-      if (!emoji) return;
-      chatInput.setRangeText(emoji, chatInput.selectionStart, chatInput.selectionEnd, 'end');
-      chatInput.focus();
-      emojiMenu.hidden = true;
-    });
-    document.addEventListener('click', (event) => {
-      if (!emojiMenu.hidden && !emojiMenu.contains(event.target) && !event.target.closest('#emojiButton')) emojiMenu.hidden = true;
-    });
-
-    $('#chatToggle').addEventListener('click', (event) => {
-      const collapsed = chatBlock.classList.toggle('collapsed');
-      if (!collapsed) unreadChat = 0;
-      event.currentTarget.textContent = collapsed ? `Expandir${unreadChat ? ` (${unreadChat})` : ''}` : 'Minimizar';
-      event.currentTarget.setAttribute('aria-expanded', String(!collapsed));
-      event.currentTarget.setAttribute('aria-label', collapsed ? 'Expandir chat' : 'Minimizar chat');
-    });
-
-    $('#copyRoomButton').addEventListener('click', () => {
-      const room = roomInput.value.trim();
-      copyText(room ? `${location.origin}${location.pathname}?sala=${encodeURIComponent(room)}` : room);
-    });
-    $('#pointerButton').addEventListener('click', () => setTools(!pointerEnabled, false));
-    $('#drawButton').addEventListener('click', () => setTools(false, !drawEnabled));
-    $('#clearButton').addEventListener('click', () => {
-      clearCanvas();
-      sendSignal({ type: 'clear-draw' });
-    });
-
-    $('#controlsButton').addEventListener('click', (event) => {
-      if (theaterEnabled) {
-        theaterEnabled = false;
-        workspace.classList.remove('theater-mode');
-        $('#theaterButton').setAttribute('aria-pressed', 'false');
-        controlsHidden = false;
-        workspace.classList.remove('controls-hidden');
-        event.currentTarget.setAttribute('aria-pressed', 'false');
-        requestAnimationFrame(resizeCanvas);
-        return;
-      }
-      controlsHidden = !controlsHidden;
-      workspace.classList.toggle('controls-hidden', controlsHidden);
-      event.currentTarget.setAttribute('aria-pressed', String(controlsHidden));
-      requestAnimationFrame(resizeCanvas);
-    });
-
-    $('#theaterButton').addEventListener('click', (event) => {
-      theaterEnabled = !theaterEnabled;
-      workspace.classList.toggle('theater-mode', theaterEnabled);
-      event.currentTarget.setAttribute('aria-pressed', String(theaterEnabled));
-      requestAnimationFrame(resizeCanvas);
-    });
-
-    $('#fullscreenButton').addEventListener('click', async () => {
-      try {
-        if (document.fullscreenElement) await document.exitFullscreen();
-        else await stageShell.requestFullscreen();
-      } catch (error) { showToast(`Tela cheia indisponível: ${error.message}`); }
-    });
-    document.addEventListener('fullscreenchange', () => requestAnimationFrame(resizeCanvas));
-    window.addEventListener('resize', resizeCanvas);
-
-    stageShell.addEventListener('pointermove', (event) => {
-      if (pointerEnabled) {
-        const now = performance.now();
-        if (now - lastPointerSent >= 35) {
-          sendSignal({ type: 'pointer', point: pointerPoint(event), active: true });
-          lastPointerSent = now;
-        }
-      }
-      if (drawing) {
-        const point = pointerPoint(event);
-        drawPoints.push(point);
-        if (drawPoints.length > 80) drawPoints = drawPoints.filter((_, index) => index % 2 === 0);
-        if (drawPoints.length > 1) drawStroke(drawPoints.slice(-2));
-      }
-    });
-    stageShell.addEventListener('pointerleave', () => {
-      if (pointerEnabled) sendSignal({ type: 'pointer', point: { x: 0, y: 0 }, active: false });
-    });
-    annotationCanvas.addEventListener('pointerdown', (event) => {
-      if (!drawEnabled) return;
-      drawing = true;
-      drawPoints = [pointerPoint(event)];
-      annotationCanvas.setPointerCapture(event.pointerId);
-    });
-    annotationCanvas.addEventListener('pointerup', () => {
-      if (!drawing) return;
-      drawing = false;
-      if (drawPoints.length >= 2) {
-        const color = '#a7e3b4';
-        sendSignal({ type: 'draw', points: drawPoints, color });
-      }
-      drawPoints = [];
-    });
-
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && (pointerEnabled || drawEnabled)) setTools(false, false);
-      const target = event.target;
-      if (!(event.altKey && event.shiftKey) || target.matches('input, textarea, select, [contenteditable="true"]')) return;
-      const key = event.key.toLowerCase();
-      if (key === 'm' && currentRole) { event.preventDefault(); setMicrophoneEnabled(localMuted); }
-      if (key === 't') { event.preventDefault(); $('#theaterButton').click(); }
-      if (key === 'f') { event.preventDefault(); $('#fullscreenButton').click(); }
-      if (key === 'c') { event.preventDefault(); $('#controlsButton').click(); }
-    });
-
-    resizeCanvas();
-    renderParticipants();
-  </script>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <script src="/app.js"></script>
 </body>
 </html>
